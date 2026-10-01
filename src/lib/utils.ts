@@ -74,7 +74,7 @@ export function hasBookingConflict(
 }
 
 export function buildWhatsAppUrl(cart: CartItem[], customerName: string): string {
-  const phoneNumber = "6281234567890"; // Ganti dengan nomor WhatsApp pemilik
+  const phoneNumber = "628974467878"; // Nomor WhatsApp pemilik
   const items = cart
     .map(
       (ci) =>

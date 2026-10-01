@@ -275,7 +275,7 @@ export default function HomePage() {
                 Jelajahi Katalog
               </Link>
               <a
-                href="https://wa.me/6281234567890?text=Halo%2C%20saya%20ingin%20bertanya%20tentang%20persewaan%20barang"
+                href="https://wa.me/628974467878?text=Halo%2C%20saya%20ingin%20bertanya%20tentang%20persewaan%20barang"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-8 py-3.5 bg-white/20 text-white font-semibold rounded-xl hover:bg-white/30 transition-colors flex items-center gap-2"

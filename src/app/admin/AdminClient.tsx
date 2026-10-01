@@ -123,6 +123,14 @@ export function AdminClient() {
     }
   }
 
+  function handleToggleAvailable(id: string) {
+    setItemsList((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, available: !item.available } : item
+      )
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -372,12 +380,29 @@ export function AdminClient() {
                         {item.stock}
                       </td>
                       <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleToggleAvailable(item.id)}
+                          className={cn(
+                            "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none",
+                            item.available
+                              ? "bg-green-500"
+                              : "bg-gray-300"
+                          )}
+                          title={item.available ? "Klik untuk nonaktifkan" : "Klik untuk aktifkan"}
+                        >
+                          <span
+                            className={cn(
+                              "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
+                              item.available ? "translate-x-6" : "translate-x-1"
+                            )}
+                          />
+                        </button>
                         <span
                           className={cn(
-                            "px-2 py-0.5 rounded-md text-xs font-medium",
+                            "block text-xs font-medium mt-1",
                             item.available
-                              ? "bg-green-50 text-green-600"
-                              : "bg-red-50 text-red-600"
+                              ? "text-green-600"
+                              : "text-red-500"
                           )}
                         >
                           {item.available ? "Aktif" : "Nonaktif"}

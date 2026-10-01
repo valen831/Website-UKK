@@ -76,26 +76,49 @@ export function Navbar() {
               )}
             </Link>
 
-            <Link
-              href="/admin"
-              className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="w-4 h-4"
+            {pathname.startsWith("/admin") ? (
+              <Link
+                href="/"
+                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-medium rounded-xl hover:bg-orange-600 transition-colors"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
-                />
-              </svg>
-              Admin
-            </Link>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-4 h-4"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+                  />
+                </svg>
+                User
+              </Link>
+            ) : (
+              <Link
+                href="/admin"
+                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-4 h-4"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
+                  />
+                </svg>
+                Admin
+              </Link>
+            )}
 
             {/* Mobile menu button */}
             <button
@@ -135,13 +158,23 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
-              <Link
-                href="/admin"
-                onClick={() => setIsOpen(false)}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                Admin Panel
-              </Link>
+              {pathname.startsWith("/admin") ? (
+                <Link
+                  href="/"
+                  onClick={() => setIsOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 transition-colors"
+                >
+                  User Mode
+                </Link>
+              ) : (
+                <Link
+                  href="/admin"
+                  onClick={() => setIsOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Admin Panel
+                </Link>
+              )}
             </div>
           </div>
         )}

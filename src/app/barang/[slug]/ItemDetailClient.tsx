@@ -252,7 +252,7 @@ export function ItemDetailClient({ item }: Props) {
             </button>
 
             <a
-              href={`https://wa.me/6281234567890?text=${whatsappText}`}
+              href={`https://wa.me/628974467878?text=${whatsappText}`}
               target="_blank"
               rel="noopener noreferrer"
               className="px-6 py-3.5 border border-green-500 text-green-600 rounded-xl font-semibold text-sm hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
