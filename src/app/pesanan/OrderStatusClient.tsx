@@ -1,20 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { orders } from "@/data/orders";
-import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, Order } from "@/lib/types";
-import { formatCurrency, formatDate, cn } from "@/lib/utils";
+import { useStore } from "@/lib/store-context";
+import {
+  ORDER_STATUS_LABELS,
+  ORDER_STATUS_COLORS,
+  PAYMENT_METHOD_LABELS,
+  Order,
+} from "@/lib/types";
+import { formatCurrency, formatDate, formatShortDate, cn } from "@/lib/utils";
 
 export function OrderStatusClient() {
+  const { getOrderByCode } = useStore();
   const [code, setCode] = useState("");
   const [searchedOrder, setSearchedOrder] = useState<Order | null>(null);
   const [notFound, setNotFound] = useState(false);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    const found = orders.find(
-      (o) => o.code.toLowerCase() === code.trim().toLowerCase()
-    );
+    const found = getOrderByCode(code);
     if (found) {
       setSearchedOrder(found);
       setNotFound(false);
@@ -121,6 +125,38 @@ export function OrderStatusClient() {
             </div>
           </div>
 
+          {/* Order Items */}
+          {searchedOrder.items.length > 0 && (
+            <div className="mb-6">
+              <p className="text-sm font-semibold text-secondary mb-3">Barang Disewa</p>
+              <div className="space-y-2">
+                {searchedOrder.items.map((ci) => (
+                  <div
+                    key={ci.item.id}
+                    className="flex gap-3 p-3 bg-muted rounded-xl"
+                  >
+                    <img
+                      src={ci.item.images[0]}
+                      alt={ci.item.name}
+                      className="w-14 h-14 object-cover rounded-lg shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-secondary truncate">
+                        {ci.item.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatShortDate(ci.startDate)} — {formatShortDate(ci.endDate)} ({ci.days} hari)
+                      </p>
+                      <p className="text-xs font-semibold text-primary mt-0.5">
+                        {formatCurrency(ci.subtotal)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4 text-sm">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -130,11 +166,23 @@ export function OrderStatusClient() {
                 </p>
               </div>
               <div>
-                <p className="text-gray-500 mb-1">Metode</p>
+                <p className="text-gray-500 mb-1">WhatsApp</p>
+                <p className="font-medium text-secondary">
+                  {searchedOrder.customer.whatsapp}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500 mb-1">Metode Pengambilan</p>
                 <p className="font-medium text-secondary capitalize">
                   {searchedOrder.deliveryMethod === "pickup"
                     ? "Ambil di Toko"
                     : "Diantar"}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500 mb-1">Pembayaran</p>
+                <p className="font-medium text-secondary">
+                  {PAYMENT_METHOD_LABELS[searchedOrder.paymentMethod]}
                 </p>
               </div>
               <div>
@@ -148,6 +196,22 @@ export function OrderStatusClient() {
                 <p className="font-bold text-primary">
                   {formatCurrency(searchedOrder.grandTotal)}
                 </p>
+              </div>
+            </div>
+
+            {/* Price breakdown */}
+            <div className="bg-muted rounded-xl p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Total Sewa</span>
+                <span className="font-medium">{formatCurrency(searchedOrder.totalPrice)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Total Deposit</span>
+                <span className="font-medium">{formatCurrency(searchedOrder.totalDeposit)}</span>
+              </div>
+              <div className="flex justify-between text-sm border-t border-border pt-2">
+                <span className="font-semibold text-secondary">Grand Total</span>
+                <span className="font-bold text-primary">{formatCurrency(searchedOrder.grandTotal)}</span>
               </div>
             </div>
 
@@ -172,7 +236,7 @@ export function OrderStatusClient() {
           <p className="text-sm text-gray-500">
             Pastikan kode pesanan yang Anda masukkan benar.
             <br />
-            Coba: <code className="bg-muted px-2 py-0.5 rounded text-xs font-mono">RNT-20261001-001</code>
+            Kode pesanan didapatkan setelah Anda melakukan checkout.
           </p>
         </div>
       )}

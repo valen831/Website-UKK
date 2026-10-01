@@ -1,24 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { rentalItems } from "@/data/items";
-import { orders } from "@/data/orders";
+import { useStore } from "@/lib/store-context";
 import {
   RentalItem,
-  Order,
   CATEGORY_LABELS,
   Category,
   ORDER_STATUS_LABELS,
   ORDER_STATUS_COLORS,
+  OrderStatus,
+  PAYMENT_METHOD_LABELS,
 } from "@/lib/types";
-import { formatCurrency, formatDate, cn } from "@/lib/utils";
+import { formatCurrency, formatDate, formatShortDate, cn } from "@/lib/utils";
 
 type Tab = "items" | "orders";
 
 export function AdminClient() {
+  const {
+    items: itemsList,
+    toggleItemAvailable,
+    addItem: storeAddItem,
+    updateItem,
+    deleteItem,
+    orders: ordersList,
+    updateOrderStatus,
+  } = useStore();
+
   const [tab, setTab] = useState<Tab>("items");
-  const [itemsList, setItemsList] = useState<RentalItem[]>([...rentalItems]);
-  const [ordersList] = useState<Order[]>([...orders]);
   const [editingItem, setEditingItem] = useState<RentalItem | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -68,28 +76,19 @@ export function AdminClient() {
       .replace(/(^-|-$)/g, "");
 
     if (editingItem) {
-      // Update
-      setItemsList((prev) =>
-        prev.map((item) =>
-          item.id === editingItem.id
-            ? {
-                ...item,
-                name: formName,
-                slug,
-                category: formCategory,
-                pricePerDay: Number(formPrice),
-                deposit: Number(formDeposit),
-                description: formDescription,
-                stock: Number(formStock),
-                images: formImage
-                  ? [formImage, ...item.images.slice(1)]
-                  : item.images,
-              }
-            : item
-        )
-      );
+      updateItem(editingItem.id, {
+        name: formName,
+        slug,
+        category: formCategory,
+        pricePerDay: Number(formPrice),
+        deposit: Number(formDeposit),
+        description: formDescription,
+        stock: Number(formStock),
+        images: formImage
+          ? [formImage, ...editingItem.images.slice(1)]
+          : editingItem.images,
+      });
     } else {
-      // Add
       const newItem: RentalItem = {
         id: Date.now().toString(),
         slug,
@@ -109,7 +108,7 @@ export function AdminClient() {
         available: true,
         bookedDates: [],
       };
-      setItemsList((prev) => [...prev, newItem]);
+      storeAddItem(newItem);
     }
 
     setShowAddForm(false);
@@ -119,16 +118,8 @@ export function AdminClient() {
 
   function handleDeleteItem(id: string) {
     if (confirm("Yakin ingin menghapus barang ini?")) {
-      setItemsList((prev) => prev.filter((item) => item.id !== id));
+      deleteItem(id);
     }
-  }
-
-  function handleToggleAvailable(id: string) {
-    setItemsList((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, available: !item.available } : item
-      )
-    );
   }
 
   return (
@@ -381,7 +372,7 @@ export function AdminClient() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
-                          onClick={() => handleToggleAvailable(item.id)}
+                          onClick={() => toggleItemAvailable(item.id)}
                           className={cn(
                             "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none",
                             item.available
@@ -453,7 +444,7 @@ export function AdminClient() {
                     Penyewa
                   </th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden sm:table-cell">
-                    WhatsApp
+                    Pembayaran
                   </th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-600">
                     Total
@@ -475,24 +466,37 @@ export function AdminClient() {
                     <td className="px-4 py-3 font-mono font-medium text-secondary">
                       {order.code}
                     </td>
-                    <td className="px-4 py-3 text-secondary">
-                      {order.customer.name}
+                    <td className="px-4 py-3">
+                      <div className="text-secondary font-medium">{order.customer.name}</div>
+                      <div className="text-xs text-gray-400">{order.customer.whatsapp}</div>
                     </td>
-                    <td className="px-4 py-3 hidden sm:table-cell text-gray-500">
-                      {order.customer.whatsapp}
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-md">
+                        {PAYMENT_METHOD_LABELS[order.paymentMethod]}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-primary">
                       {formatCurrency(order.grandTotal)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span
+                      <select
+                        value={order.status}
+                        onChange={(e) =>
+                          updateOrderStatus(order.id, e.target.value as OrderStatus)
+                        }
                         className={cn(
-                          "px-2 py-0.5 rounded-md text-xs font-medium",
+                          "px-2 py-1 rounded-md text-xs font-medium border-0 outline-none cursor-pointer",
                           ORDER_STATUS_COLORS[order.status]
                         )}
                       >
-                        {ORDER_STATUS_LABELS[order.status]}
-                      </span>
+                        {Object.entries(ORDER_STATUS_LABELS).map(
+                          ([key, label]) => (
+                            <option key={key} value={key}>
+                              {label}
+                            </option>
+                          )
+                        )}
+                      </select>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell text-gray-500">
                       {formatDate(order.createdAt)}
@@ -507,6 +511,9 @@ export function AdminClient() {
             <div className="text-center py-12">
               <div className="text-4xl mb-3">📋</div>
               <p className="text-gray-500">Belum ada pesanan</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Pesanan akan muncul di sini saat user melakukan checkout
+              </p>
             </div>
           )}
         </div>
