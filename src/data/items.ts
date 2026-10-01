@@ -50,8 +50,8 @@ export const rentalItems: RentalItem[] = [
     pricePerDay: 300000,
     deposit: 1000000,
     images: [
-      "https://images.unsplash.com/photo-1606986628253-e3e31a180a8f?w=800",
-      "https://images.unsplash.com/photo-1617575521317-d2974f3b56d2?w=800",
+      "https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?w=800",
+      "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=800",
     ],
     stock: 2,
     rating: 4.8,
@@ -195,8 +195,8 @@ export const rentalItems: RentalItem[] = [
     pricePerDay: 35000,
     deposit: 100000,
     images: [
-      "https://images.unsplash.com/photo-1510672981848-a1c4f1cb5ccf?w=800",
-      "https://images.unsplash.com/photo-1445308394109-4ec2920981b1?w=800",
+      "https://images.unsplash.com/photo-1537905569824-f89f14cceb68?w=800",
+      "https://images.unsplash.com/photo-1526772662000-3f88f10405ff?w=800",
     ],
     stock: 10,
     rating: 4.4,
