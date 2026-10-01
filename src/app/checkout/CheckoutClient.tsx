@@ -3,6 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
+import { useStore } from "@/lib/store-context";
+import {
+  PaymentMethod,
+  PAYMENT_CATEGORIES,
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_METHOD_ICONS,
+} from "@/lib/types";
 import {
   formatCurrency,
   formatShortDate,
@@ -14,20 +21,43 @@ import {
 export function CheckoutClient() {
   const { items, totalPrice, totalDeposit, grandTotal, removeItem, clearCart } =
     useCart();
+  const { addOrder } = useStore();
 
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [address, setAddress] = useState("");
   const [delivery, setDelivery] = useState<"pickup" | "delivery">("pickup");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
   const [notes, setNotes] = useState("");
   const [orderCode, setOrderCode] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (items.length === 0) return;
+    if (items.length === 0 || !paymentMethod) return;
 
     const code = generateOrderCode();
+
+    // Save order to global store for real-time access
+    addOrder({
+      id: Date.now().toString(),
+      code,
+      items: [...items],
+      totalPrice,
+      totalDeposit,
+      grandTotal,
+      customer: {
+        name,
+        whatsapp,
+        address,
+      },
+      deliveryMethod: delivery,
+      paymentMethod: paymentMethod as PaymentMethod,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      notes: notes || undefined,
+    });
+
     setOrderCode(code);
     setSubmitted(true);
     clearCart();
@@ -73,9 +103,15 @@ export function CheckoutClient() {
         <p className="text-gray-500 mb-2">
           Kode pesanan Anda:
         </p>
-        <div className="inline-block px-6 py-3 bg-accent rounded-xl mb-6">
+        <div className="inline-block px-6 py-3 bg-accent rounded-xl mb-4">
           <span className="text-2xl font-bold text-primary font-mono">
             {orderCode}
+          </span>
+        </div>
+        <div className="mb-6">
+          <p className="text-sm text-gray-500 mb-1">Metode Pembayaran:</p>
+          <span className="inline-block px-3 py-1.5 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg">
+            {PAYMENT_METHOD_LABELS[paymentMethod as PaymentMethod]}
           </span>
         </div>
         <p className="text-sm text-gray-500 mb-8 max-w-md mx-auto">
@@ -254,6 +290,49 @@ export function CheckoutClient() {
                 </div>
               </div>
             </div>
+
+            {/* Payment Method */}
+            <div className="bg-white rounded-2xl border border-border p-6">
+              <h2 className="font-semibold text-secondary mb-4">
+                Metode Pembayaran *
+              </h2>
+              <div className="space-y-5">
+                {PAYMENT_CATEGORIES.map((category) => (
+                  <div key={category.key}>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                      {category.label}
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {category.methods.map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setPaymentMethod(method)}
+                          className={cn(
+                            "p-3 rounded-xl border-2 text-center transition-all",
+                            paymentMethod === method
+                              ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                              : "border-border hover:border-gray-300"
+                          )}
+                        >
+                          <div className="text-xl mb-1">
+                            {PAYMENT_METHOD_ICONS[method]}
+                          </div>
+                          <div className="text-xs font-medium text-secondary leading-tight">
+                            {PAYMENT_METHOD_LABELS[method]}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {!paymentMethod && (
+                <p className="text-xs text-red-500 mt-3">
+                  * Pilih metode pembayaran untuk melanjutkan
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Right: Summary */}
@@ -287,6 +366,17 @@ export function CheckoutClient() {
                 </div>
               </div>
 
+              {paymentMethod && (
+                <div className="border-t border-border pt-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Pembayaran</span>
+                    <span className="font-medium text-blue-600">
+                      {PAYMENT_METHOD_LABELS[paymentMethod as PaymentMethod]}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="border-t border-border pt-3">
                 <div className="flex justify-between">
                   <span className="font-semibold text-secondary">Grand Total</span>
@@ -302,7 +392,13 @@ export function CheckoutClient() {
               <div className="space-y-3">
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors text-sm"
+                  disabled={!paymentMethod}
+                  className={cn(
+                    "w-full py-3.5 font-semibold rounded-xl transition-colors text-sm",
+                    paymentMethod
+                      ? "bg-primary text-white hover:bg-primary-dark"
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  )}
                 >
                   Buat Pesanan
                 </button>
