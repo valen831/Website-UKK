@@ -20,8 +20,8 @@ interface Props {
 
 export function ItemDetailClient({ item: initialItem }: Props) {
   const { items: storeItems } = useStore();
-  // Use store version for real-time updates (e.g., admin toggling availability)
-  const item = storeItems.find((i) => i.id === initialItem.id) || initialItem;
+  // Use store version for real-time updates (e.g., admin editing name, price, availability, images)
+  const item = storeItems.find((i) => i.id === initialItem.id || i.slug === initialItem.slug) || initialItem;
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [startDate, setStartDate] = useState("");
