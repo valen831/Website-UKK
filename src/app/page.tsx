@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { ItemCard } from "@/components/ItemCard";
+import { FeaturedItems } from "@/components/FeaturedItems";
 import { HeroSearch } from "@/components/HeroSearch";
-import { getFeaturedItems } from "@/data/items";
 import { CATEGORY_LABELS, CATEGORY_ICONS, Category } from "@/lib/types";
 
 export default function HomePage() {
-  const featuredItems = getFeaturedItems();
   const categories = Object.entries(CATEGORY_LABELS) as [Category, string][];
 
   return (
@@ -107,11 +105,7 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredItems.map((item) => (
-              <ItemCard key={item.id} item={item} />
-            ))}
-          </div>
+          <FeaturedItems />
         </div>
       </section>
 

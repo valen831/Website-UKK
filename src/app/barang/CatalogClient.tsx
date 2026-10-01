@@ -2,7 +2,7 @@
 
 import { useState, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { rentalItems } from "@/data/items";
+import { useStore } from "@/lib/store-context";
 import { ItemCard } from "@/components/ItemCard";
 import {
   CATEGORY_LABELS,
@@ -16,6 +16,7 @@ function CatalogContent() {
   const searchParams = useSearchParams();
   const initialQ = searchParams.get("q") || "";
   const initialCategory = searchParams.get("kategori") || "";
+  const { items: storeItems } = useStore();
 
   const [search, setSearch] = useState(initialQ);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
@@ -26,7 +27,7 @@ function CatalogContent() {
   const categories = Object.entries(CATEGORY_LABELS) as [Category, string][];
 
   const filteredItems = useMemo(() => {
-    let items = [...rentalItems];
+    let items = [...storeItems];
 
     // Search filter
     if (search) {
@@ -73,7 +74,7 @@ function CatalogContent() {
     }
 
     return items;
-  }, [search, selectedCategory, sortBy, priceRange, showAvailableOnly]);
+  }, [storeItems, search, selectedCategory, sortBy, priceRange, showAvailableOnly]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -83,7 +84,7 @@ function CatalogContent() {
           Katalog Barang
         </h1>
         <p className="text-gray-500">
-          Temukan barang yang Anda butuhkan dari {rentalItems.length} item tersedia
+          Temukan barang yang Anda butuhkan dari {storeItems.length} item tersedia
         </p>
       </div>
 

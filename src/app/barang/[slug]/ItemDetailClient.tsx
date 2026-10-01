@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { RentalItem, CATEGORY_LABELS } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
+import { useStore } from "@/lib/store-context";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { PriceSummary } from "@/components/PriceSummary";
 import {
@@ -17,7 +18,11 @@ interface Props {
   item: RentalItem;
 }
 
-export function ItemDetailClient({ item }: Props) {
+export function ItemDetailClient({ item: initialItem }: Props) {
+  const { items: storeItems } = useStore();
+  // Use store version for real-time updates (e.g., admin toggling availability)
+  const item = storeItems.find((i) => i.id === initialItem.id) || initialItem;
+
   const [selectedImage, setSelectedImage] = useState(0);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -31,7 +36,7 @@ export function ItemDetailClient({ item }: Props) {
       : false;
 
   function handleAddToCart() {
-    if (!startDate || !endDate || hasConflict) return;
+    if (!startDate || !endDate || hasConflict || !item.available) return;
     addItem(item, startDate, endDate);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
@@ -142,6 +147,16 @@ export function ItemDetailClient({ item }: Props) {
             <span className="text-gray-500">/ hari</span>
           </div>
 
+          {/* Not available warning */}
+          {!item.available && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 shrink-0">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+              </svg>
+              Barang ini sedang tidak tersedia untuk disewa. Silakan hubungi kami atau cek kembali nanti.
+            </div>
+          )}
+
           {/* Description */}
           <div className="mb-6">
             <h3 className="font-semibold text-secondary mb-2">Deskripsi</h3>
@@ -170,56 +185,60 @@ export function ItemDetailClient({ item }: Props) {
             </div>
           </div>
 
-          {/* Date Picker */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-secondary mb-3">Pilih Tanggal Sewa</h3>
-            <DateRangePicker
-              bookedDates={item.bookedDates}
-              startDate={startDate}
-              endDate={endDate}
-              onStartDateChange={setStartDate}
-              onEndDateChange={setEndDate}
-            />
-          </div>
-
-          {/* Date display */}
-          {startDate && (
-            <div className="mb-4 flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500">Mulai:</span>
-                <span className="font-medium text-secondary">{startDate}</span>
+          {/* Date Picker - only show if available */}
+          {item.available && (
+            <>
+              <div className="mb-6">
+                <h3 className="font-semibold text-secondary mb-3">Pilih Tanggal Sewa</h3>
+                <DateRangePicker
+                  bookedDates={item.bookedDates}
+                  startDate={startDate}
+                  endDate={endDate}
+                  onStartDateChange={setStartDate}
+                  onEndDateChange={setEndDate}
+                />
               </div>
-              {endDate && (
-                <>
-                  <span className="text-gray-300">→</span>
+
+              {/* Date display */}
+              {startDate && (
+                <div className="mb-4 flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="text-gray-500">Selesai:</span>
-                    <span className="font-medium text-secondary">{endDate}</span>
+                    <span className="text-gray-500">Mulai:</span>
+                    <span className="font-medium text-secondary">{startDate}</span>
                   </div>
-                  <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-md">
-                    {days} hari
-                  </span>
-                </>
+                  {endDate && (
+                    <>
+                      <span className="text-gray-300">→</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">Selesai:</span>
+                        <span className="font-medium text-secondary">{endDate}</span>
+                      </div>
+                      <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-md">
+                        {days} hari
+                      </span>
+                    </>
+                  )}
+                </div>
               )}
-            </div>
-          )}
 
-          {/* Conflict warning */}
-          {hasConflict && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
-              ⚠️ Beberapa tanggal yang dipilih sudah dipesan. Silakan pilih tanggal lain.
-            </div>
-          )}
+              {/* Conflict warning */}
+              {hasConflict && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+                  ⚠️ Beberapa tanggal yang dipilih sudah dipesan. Silakan pilih tanggal lain.
+                </div>
+              )}
 
-          {/* Price Summary */}
-          {days > 0 && !hasConflict && (
-            <div className="mb-6">
-              <PriceSummary
-                pricePerDay={item.pricePerDay}
-                days={days}
-                deposit={item.deposit}
-              />
-            </div>
+              {/* Price Summary */}
+              {days > 0 && !hasConflict && (
+                <div className="mb-6">
+                  <PriceSummary
+                    pricePerDay={item.pricePerDay}
+                    days={days}
+                    deposit={item.deposit}
+                  />
+                </div>
+              )}
+            </>
           )}
 
           {/* Actions */}
