@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
 import { useStore } from "@/lib/store-context";
+import { useAuth } from "@/lib/auth-context";
 import {
   PaymentMethod,
   PAYMENT_CATEGORIES,
@@ -22,6 +23,7 @@ export function CheckoutClient() {
   const { items, totalPrice, totalDeposit, grandTotal, removeItem, clearCart } =
     useCart();
   const { addOrder } = useStore();
+  const { user } = useAuth();
 
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -38,8 +40,8 @@ export function CheckoutClient() {
 
     const code = generateOrderCode();
 
-    // Save order to global store for real-time access
-    addOrder({
+    // Save order to Supabase via store
+    const orderData = {
       id: Date.now().toString(),
       code,
       items: [...items],
@@ -53,10 +55,12 @@ export function CheckoutClient() {
       },
       deliveryMethod: delivery,
       paymentMethod: paymentMethod as PaymentMethod,
-      status: "pending",
+      status: "pending" as const,
       createdAt: new Date().toISOString(),
       notes: notes || undefined,
-    });
+      userId: user?.id || null,
+    };
+    addOrder(orderData as any);
 
     setOrderCode(code);
     setSubmitted(true);
