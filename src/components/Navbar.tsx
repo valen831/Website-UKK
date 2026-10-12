@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useCart } from "@/lib/cart-context";
+import { useAuth } from "@/lib/auth-context";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const { itemCount } = useCart();
+  const { user, profile, loading, signOut } = useAuth();
   const pathname = usePathname();
 
   const navLinks = [
@@ -16,6 +19,8 @@ export function Navbar() {
     { href: "/barang", label: "Katalog" },
     { href: "/pesanan", label: "Cek Pesanan" },
   ];
+
+  const isAdmin = profile?.role === "admin";
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-border">
@@ -51,6 +56,7 @@ export function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
+            {/* Cart */}
             <Link
               href="/checkout"
               className="relative p-2 text-gray-600 hover:text-primary transition-colors"
@@ -76,48 +82,114 @@ export function Navbar() {
               )}
             </Link>
 
-            {pathname.startsWith("/admin") ? (
-              <Link
-                href="/"
-                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-medium rounded-xl hover:bg-orange-600 transition-colors"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-4 h-4"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-                  />
-                </svg>
-                User
-              </Link>
-            ) : (
+            {/* Admin link - only show if admin */}
+            {isAdmin && !pathname.startsWith("/admin") && (
               <Link
                 href="/admin"
-                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-4 h-4"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
-                  />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
                 </svg>
                 Admin
               </Link>
+            )}
+            {pathname.startsWith("/admin") && (
+              <Link
+                href="/"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 bg-primary text-white text-sm font-medium rounded-xl hover:bg-orange-600 transition-colors"
+              >
+                User
+              </Link>
+            )}
+
+            {/* Auth section */}
+            {!loading && (
+              <>
+                {user ? (
+                  <div className="relative hidden md:block">
+                    <button
+                      onClick={() => setShowUserMenu(!showUserMenu)}
+                      className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-xl border border-border hover:border-primary/30 transition-colors"
+                    >
+                      {profile?.avatar_url ? (
+                        <img
+                          src={profile.avatar_url}
+                          alt=""
+                          className="w-7 h-7 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 bg-primary/10 text-primary rounded-full flex items-center justify-center text-xs font-semibold">
+                          {(profile?.name || user.email || "U").charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-sm font-medium text-secondary max-w-[100px] truncate">
+                        {profile?.name || user.email?.split("@")[0]}
+                      </span>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 text-gray-400">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+
+                    {showUserMenu && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+                        <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-border shadow-lg z-50 animate-fade-in overflow-hidden">
+                          <div className="px-4 py-3 border-b border-border">
+                            <p className="text-sm font-semibold text-secondary truncate">
+                              {profile?.name || "User"}
+                            </p>
+                            <p className="text-xs text-gray-400 truncate">
+                              {user.email}
+                            </p>
+                            {isAdmin && (
+                              <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-semibold bg-primary/10 text-primary rounded-full">
+                                Admin
+                              </span>
+                            )}
+                          </div>
+                          <div className="py-1">
+                            <Link
+                              href="/pesanan"
+                              onClick={() => setShowUserMenu(false)}
+                              className="block px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                            >
+                              Pesanan Saya
+                            </Link>
+                            {isAdmin && (
+                              <Link
+                                href="/admin"
+                                onClick={() => setShowUserMenu(false)}
+                                className="block px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                              >
+                                Admin Panel
+                              </Link>
+                            )}
+                          </div>
+                          <div className="border-t border-border py-1">
+                            <button
+                              onClick={() => {
+                                setShowUserMenu(false);
+                                signOut();
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                            >
+                              Keluar
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <Link
+                    href="/login"
+                    className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-medium rounded-xl hover:bg-orange-600 transition-colors"
+                  >
+                    Masuk
+                  </Link>
+                )}
+              </>
             )}
 
             {/* Mobile menu button */}
@@ -158,22 +230,51 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
-              {pathname.startsWith("/admin") ? (
-                <Link
-                  href="/"
-                  onClick={() => setIsOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 transition-colors"
-                >
-                  User Mode
-                </Link>
-              ) : (
-                <Link
-                  href="/admin"
-                  onClick={() => setIsOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  Admin Panel
-                </Link>
+
+              {/* Mobile auth */}
+              {!loading && (
+                <>
+                  {user ? (
+                    <>
+                      <div className="px-4 py-2.5 flex items-center gap-3">
+                        {profile?.avatar_url ? (
+                          <img src={profile.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+                        ) : (
+                          <div className="w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center text-sm font-semibold">
+                            {(profile?.name || "U").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-secondary truncate">{profile?.name || "User"}</p>
+                          <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                        </div>
+                      </div>
+                      {isAdmin && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setIsOpen(false)}
+                          className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                        >
+                          Admin Panel
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => { setIsOpen(false); signOut(); }}
+                        className="px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors text-left"
+                      >
+                        Keluar
+                      </button>
+                    </>
+                  ) : (
+                    <Link
+                      href="/login"
+                      onClick={() => setIsOpen(false)}
+                      className="mx-4 mt-1 py-2.5 bg-primary text-white text-sm font-medium rounded-xl text-center hover:bg-orange-600 transition-colors"
+                    >
+                      Masuk / Daftar
+                    </Link>
+                  )}
+                </>
               )}
             </div>
           </div>
