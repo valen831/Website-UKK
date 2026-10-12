@@ -9,6 +9,8 @@ import {
   ReactNode,
 } from "react";
 import { RentalItem, Order } from "@/lib/types";
+import { rentalItems } from "@/data/items";
+import { orders as initialOrders } from "@/data/orders";
 import { supabase } from "@/lib/supabase";
 
 interface StoreContextType {
@@ -104,8 +106,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         supabase.from("items").select("*").order("created_at", { ascending: false }),
         supabase.from("orders").select("*").order("created_at", { ascending: false }),
       ]);
-      if (itemsRes.data) setItems(itemsRes.data.map(dbToItem));
-      if (ordersRes.data) setOrders(ordersRes.data.map(dbToOrder));
+      
+      if (itemsRes.error || !itemsRes.data || itemsRes.data.length === 0) {
+        setItems(rentalItems);
+      } else {
+        setItems(itemsRes.data.map(dbToItem));
+      }
+
+      if (ordersRes.error || !ordersRes.data || ordersRes.data.length === 0) {
+        setOrders(initialOrders);
+      } else {
+        setOrders(ordersRes.data.map(dbToOrder));
+      }
+
       setLoading(false);
     }
     fetchData();
