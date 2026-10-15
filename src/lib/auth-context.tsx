@@ -29,13 +29,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-async function fetchProfile(userId: string): Promise<Profile | null> {
-  const { data } = await supabase
+async function fetchProfile(userId: string, userEmail?: string): Promise<Profile> {
+  const { data, error } = await supabase
     .from("profiles")
     .select("name, avatar_url, role")
     .eq("id", userId)
     .single();
-  return data;
+
+  if (error || !data) {
+    return {
+      name: userEmail ? userEmail.split("@")[0] : "User",
+      avatar_url: null,
+      role: "user",
+    };
+  }
+  return {
+    ...data,
+    role: data.role || "user",
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -48,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id).then(setProfile);
+        fetchProfile(session.user.id, session.user.email).then(setProfile);
       }
       setLoading(false);
     });
@@ -60,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
-        fetchProfile(currentUser.id).then(setProfile);
+        fetchProfile(currentUser.id, currentUser.email).then(setProfile);
       } else {
         setProfile(null);
       }
