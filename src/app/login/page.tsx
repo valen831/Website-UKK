@@ -8,13 +8,22 @@ export default function LoginPage() {
   const router = useRouter();
   const { signInWithGoogle, signInWithEmail, signUp, user, loading } = useAuth();
 
-  const [isRegister, setIsRegister] = useState(false);
+  // Default ke mode daftar, kecuali URL hash #login
+  const [isRegister, setIsRegister] = useState(true);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    // Check URL hash for login mode
+    if (typeof window !== "undefined" && window.location.hash === "#login") {
+      setIsRegister(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!loading && user) router.replace("/");
@@ -23,22 +32,45 @@ export default function LoginPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
+    setSuccess("");
 
-    if (isRegister && password !== confirmPassword) {
-      setError("Password dan konfirmasi password tidak cocok");
-      return;
+    if (isRegister) {
+      if (password.length < 6) {
+        setError("Password minimal 6 karakter");
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError("Password dan konfirmasi password tidak cocok");
+        return;
+      }
     }
 
     setSubmitting(true);
     try {
       if (isRegister) {
         await signUp(email, password, name);
+        setSuccess("Akun berhasil dibuat! Silakan cek email untuk verifikasi, atau langsung masuk.");
+        // Switch ke mode login setelah daftar berhasil
+        setIsRegister(false);
+        setPassword("");
+        setConfirmPassword("");
+        setName("");
       } else {
         await signInWithEmail(email, password);
+        router.replace("/");
       }
-      router.replace("/");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan, coba lagi");
+      const msg = err instanceof Error ? err.message : "Terjadi kesalahan, coba lagi";
+      // Translate common Supabase errors
+      if (msg.includes("Invalid login credentials")) {
+        setError("Email atau password salah");
+      } else if (msg.includes("already registered")) {
+        setError("Email sudah terdaftar. Silakan masuk.");
+      } else if (msg.includes("Password should be at least")) {
+        setError("Password minimal 6 karakter");
+      } else {
+        setError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -46,13 +78,13 @@ export default function LoginPage() {
 
   async function handleGoogle() {
     setError("");
+    setSuccess("");
     setSubmitting(true);
     try {
       await signInWithGoogle();
-      router.replace("/");
+      // signInWithGoogle redirects to Google — no router.replace needed
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal masuk dengan Google");
-    } finally {
       setSubmitting(false);
     }
   }
@@ -70,7 +102,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
         {/* Logo */}
         <h1 className="mb-6 text-center text-3xl font-bold tracking-tight">
-          <span className="text-[#1e293b]">Rent</span>
+          <span className="text-[#1e293b]">Renta</span>
           <span className="text-[#f97316]">Go</span>
         </h1>
 
@@ -91,7 +123,7 @@ export default function LoginPage() {
             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.96 10.96 0 0 0 1 12c0 1.77.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
           </svg>
-          Lanjutkan dengan Google
+          {isRegister ? "Daftar dengan Google" : "Masuk dengan Google"}
         </button>
 
         {/* Divider */}
@@ -100,6 +132,11 @@ export default function LoginPage() {
           <span className="text-xs font-medium text-[#1e293b]/40">atau</span>
           <div className="h-px flex-1 bg-[#e2e8f0]" />
         </div>
+
+        {/* Success message */}
+        {success && (
+          <div className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">{success}</div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -125,6 +162,7 @@ export default function LoginPage() {
             type="password"
             placeholder="Password"
             required
+            minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-[#f97316] focus:ring-2 focus:ring-[#f97316]/20"
@@ -134,6 +172,7 @@ export default function LoginPage() {
               type="password"
               placeholder="Konfirmasi Password"
               required
+              minLength={6}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-[#f97316] focus:ring-2 focus:ring-[#f97316]/20"
@@ -154,7 +193,7 @@ export default function LoginPage() {
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 Memproses...
               </span>
-            ) : isRegister ? "Daftar" : "Masuk"}
+            ) : isRegister ? "Daftar Akun" : "Masuk"}
           </button>
         </form>
 
@@ -163,12 +202,27 @@ export default function LoginPage() {
           {isRegister ? "Sudah punya akun?" : "Belum punya akun?"}{" "}
           <button
             type="button"
-            onClick={() => { setIsRegister(!isRegister); setError(""); }}
+            onClick={() => { setIsRegister(!isRegister); setError(""); setSuccess(""); }}
             className="font-semibold text-[#f97316] hover:underline"
           >
             {isRegister ? "Masuk" : "Daftar"}
           </button>
         </p>
+
+        {/* Admin mode link */}
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setIsRegister(false);
+              setError("");
+              setSuccess("");
+            }}
+            className="text-xs text-[#1e293b]/40 hover:text-[#f97316] transition-colors"
+          >
+            Masuk sebagai Admin
+          </button>
+        </div>
       </div>
     </div>
   );

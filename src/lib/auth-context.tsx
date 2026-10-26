@@ -81,22 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: window.location.origin + "/auth/callback",
-        },
-      });
-      if (error) throw error;
-    } catch (err: unknown) {
-      console.error("Google sign in error:", err);
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Gagal masuk dengan Google. Pastikan provider Google aktif di Supabase.";
-      alert(message);
-    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin + "/auth/callback",
+      },
+    });
+    if (error) throw error;
+    // Browser redirects to Google — no further code runs
   }, []);
 
   const signInWithEmail = useCallback(
