@@ -56,6 +56,7 @@ export function AdminClient() {
   const [reportFrom, setReportFrom] = useState("");
   const [reportTo, setReportTo] = useState("");
   const [reportStatus, setReportStatus] = useState<string>("all");
+  const [printingOrder, setPrintingOrder] = useState<typeof ordersList[number] | null>(null);
 
   // Users state
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -225,6 +226,14 @@ export function AdminClient() {
     window.print();
   }
 
+  function handlePrintNota(order: typeof ordersList[number]) {
+    setPrintingOrder(order);
+    setTimeout(() => {
+      window.print();
+      setPrintingOrder(null);
+    }, 100);
+  }
+
   // ---- Tabs config ----
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "items", label: "Barang", count: itemsList.length },
@@ -239,7 +248,7 @@ export function AdminClient() {
       <style>{`
         @media print {
           body > * { display: none !important; }
-          #print-report { display: block !important; }
+          ${printingOrder ? '#print-nota' : '#print-report'} { display: block !important; }
         }
       `}</style>
 
@@ -306,6 +315,105 @@ export function AdminClient() {
             Dicetak pada: {new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
           </div>
         </div>
+      </div>
+
+      {/* Hidden print nota (per-order invoice) */}
+      <div id="print-nota" style={{ display: "none" }}>
+        {printingOrder && (
+          <div style={{ fontFamily: "Arial, sans-serif", padding: "40px", color: "#000", background: "#fff", maxWidth: "800px", margin: "0 auto" }}>
+            <div style={{ textAlign: "center", marginBottom: "24px", borderBottom: "2px solid #f97316", paddingBottom: "16px" }}>
+              <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#f97316", margin: "0" }}>
+                RentaGo
+              </h1>
+              <p style={{ fontSize: "14px", color: "#666", marginTop: "4px" }}>
+                Nota Pembelian / Invoice
+              </p>
+            </div>
+
+            {/* Order info */}
+            <table style={{ width: "100%", marginBottom: "20px", fontSize: "13px" }}>
+              <tbody>
+                <tr>
+                  <td style={{ padding: "4px 0", fontWeight: "bold", width: "140px" }}>Kode Pesanan</td>
+                  <td style={{ padding: "4px 0" }}>: {printingOrder.code}</td>
+                  <td style={{ padding: "4px 0", fontWeight: "bold", width: "140px" }}>Tanggal</td>
+                  <td style={{ padding: "4px 0" }}>: {formatShortDate(printingOrder.createdAt)}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: "4px 0", fontWeight: "bold" }}>Nama Penyewa</td>
+                  <td style={{ padding: "4px 0" }}>: {printingOrder.customer.name}</td>
+                  <td style={{ padding: "4px 0", fontWeight: "bold" }}>Status</td>
+                  <td style={{ padding: "4px 0" }}>: {ORDER_STATUS_LABELS[printingOrder.status]}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: "4px 0", fontWeight: "bold" }}>No. WhatsApp</td>
+                  <td style={{ padding: "4px 0" }}>: {printingOrder.customer.whatsapp}</td>
+                  <td style={{ padding: "4px 0", fontWeight: "bold" }}>Pembayaran</td>
+                  <td style={{ padding: "4px 0" }}>: {PAYMENT_METHOD_LABELS[printingOrder.paymentMethod]}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: "4px 0", fontWeight: "bold", verticalAlign: "top" }}>Alamat</td>
+                  <td colSpan={3} style={{ padding: "4px 0" }}>: {printingOrder.customer.address}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* Items table */}
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", marginBottom: "16px" }}>
+              <thead>
+                <tr style={{ background: "#f3f4f6" }}>
+                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "left" }}>No</th>
+                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "left" }}>Nama Barang</th>
+                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "center" }}>Durasi</th>
+                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right" }}>Harga/Hari</th>
+                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right" }}>Subtotal</th>
+                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right" }}>Deposit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {printingOrder.items.map((ci, idx) => (
+                  <tr key={idx}>
+                    <td style={{ padding: "6px 10px", border: "1px solid #ddd" }}>{idx + 1}</td>
+                    <td style={{ padding: "6px 10px", border: "1px solid #ddd" }}>{ci.item.name}</td>
+                    <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "center" }}>{ci.days} hari</td>
+                    <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(ci.item.pricePerDay)}</td>
+                    <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(ci.subtotal)}</td>
+                    <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(ci.deposit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Totals */}
+            <table style={{ width: "300px", marginLeft: "auto", fontSize: "13px", borderCollapse: "collapse" }}>
+              <tbody>
+                <tr>
+                  <td style={{ padding: "6px 10px", border: "1px solid #ddd", fontWeight: "bold" }}>Total Sewa</td>
+                  <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(printingOrder.totalPrice)}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: "6px 10px", border: "1px solid #ddd", fontWeight: "bold" }}>Total Deposit</td>
+                  <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(printingOrder.totalDeposit)}</td>
+                </tr>
+                <tr style={{ background: "#fff7ed" }}>
+                  <td style={{ padding: "8px 10px", border: "1px solid #ddd", fontWeight: "bold", fontSize: "14px" }}>Grand Total</td>
+                  <td style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right", fontWeight: "bold", fontSize: "14px", color: "#f97316" }}>{formatCurrency(printingOrder.grandTotal)}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            {printingOrder.notes && (
+              <div style={{ marginTop: "16px", padding: "8px 12px", background: "#f9fafb", borderRadius: "4px", fontSize: "12px" }}>
+                <strong>Catatan:</strong> {printingOrder.notes}
+              </div>
+            )}
+
+            <div style={{ marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #ddd", fontSize: "12px", color: "#999", textAlign: "center" }}>
+              * Deposit dikembalikan saat barang dikembalikan dalam kondisi baik.<br />
+              Dicetak pada: {new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main content */}
@@ -634,6 +742,9 @@ export function AdminClient() {
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">
                       Tanggal
                     </th>
+                    <th className="text-center px-4 py-3 font-semibold text-gray-600">
+                      Aksi
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -679,6 +790,17 @@ export function AdminClient() {
                       </td>
                       <td className="px-4 py-3 hidden md:table-cell text-gray-500">
                         {formatDate(order.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handlePrintNota(order)}
+                          className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                          title="Cetak Nota"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18.75 12h.008v.008h-.008V12Zm-3 0h.008v.008h-.008V12Z" />
+                          </svg>
+                        </button>
                       </td>
                     </tr>
                   ))}
