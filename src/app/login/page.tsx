@@ -2,6 +2,7 @@
 
 import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
@@ -17,13 +18,6 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    // Check URL hash for login mode
-    if (typeof window !== "undefined" && window.location.hash === "#login") {
-      setIsRegister(false);
-    }
-  }, []);
 
   useEffect(() => {
     if (!loading && user) router.replace("/");
@@ -211,17 +205,12 @@ export default function LoginPage() {
 
         {/* Admin mode link */}
         <div className="mt-4 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              setIsRegister(false);
-              setError("");
-              setSuccess("");
-            }}
+          <Link
+            href="/admin/login"
             className="text-xs text-[#1e293b]/40 hover:text-[#f97316] transition-colors"
           >
             Masuk sebagai Admin
-          </button>
+          </Link>
         </div>
       </div>
     </div>
