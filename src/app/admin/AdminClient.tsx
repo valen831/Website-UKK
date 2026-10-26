@@ -95,10 +95,10 @@ export function AdminClient() {
           Halaman ini hanya untuk administrator.
         </p>
         <Link
-          href="/login"
-          className="inline-block px-6 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors text-sm"
+          href="/admin/login"
+          className="inline-block px-6 py-2.5 bg-secondary text-white font-medium rounded-xl hover:bg-gray-800 transition-colors text-sm"
         >
-          Login sebagai Admin
+          Login Admin
         </Link>
       </div>
     );

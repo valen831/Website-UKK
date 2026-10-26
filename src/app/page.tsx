@@ -282,7 +282,7 @@ export default function HomePage() {
             </div>
             <div className="mt-6">
               <Link
-                href="/login#login"
+                href="/admin/login"
                 className="text-sm text-orange-200 hover:text-white transition-colors underline underline-offset-2"
               >
                 Masuk sebagai Admin
