@@ -107,16 +107,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name } },
+        options: {
+          data: { full_name: name },
+          emailRedirectTo: window.location.origin + "/auth/callback",
+        },
       });
-      if (error) throw error;
 
-      // Upsert profile dengan nama
+      if (error) {
+        // Explain how to fix a failing profile trigger.
+        if (error.message?.includes("Database error saving new user")) {
+          throw new Error("Database belum siap (Trigger handle_new_user gagal). Buka Supabase Dashboard > SQL Editor, lalu jalankan isi file supabase-schema.sql.");
+        }
+        throw error;
+      }
+
       if (data.user) {
         await supabase.from("profiles").upsert({
           id: data.user.id,
           name,
           email,
+          role: "user",
         });
       }
     },
