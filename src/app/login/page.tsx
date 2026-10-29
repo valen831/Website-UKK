@@ -190,7 +190,7 @@ export default function LoginPage() {
             className="w-full rounded-xl bg-[#f97316] py-3 text-sm font-semibold text-white transition hover:bg-[#ea580c] disabled:opacity-50"
           >
             {submitting ? (
-              <span className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center justify-center gap-2">
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 Memproses...
               </span>
@@ -198,25 +198,24 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Toggle */}
-        <p className="mt-6 text-center text-sm text-[#1e293b]/60">
-          {isRegister ? "Sudah punya akun?" : "Belum punya akun?"}{" "}
-          <button
-            type="button"
-            onClick={() => { setIsRegister(!isRegister); setError(""); setSuccess(""); }}
-            className="font-semibold text-[#f97316] hover:underline"
-          >
-            {isRegister ? "Masuk" : "Daftar"}
-          </button>
-        </p>
-
-        {/* Admin mode link */}
-        <div className="mt-4 text-center">
+        {/* Toggle + Mode Admin */}
+        <div className="mt-6 flex items-center justify-center gap-3 text-sm text-[#1e293b]/60">
+          <span>
+            {isRegister ? "Sudah punya akun?" : "Belum punya akun?"}{" "}
+            <button
+              type="button"
+              onClick={() => { setIsRegister(!isRegister); setError(""); setSuccess(""); }}
+              className="font-semibold text-[#f97316] hover:underline"
+            >
+              {isRegister ? "Masuk" : "Daftar"}
+            </button>
+          </span>
+          <span className="text-[#e2e8f0]">|</span>
           <Link
             href="/admin/login"
-            className="text-xs text-[#1e293b]/40 hover:text-[#f97316] transition-colors"
+            className="font-medium text-[#1e293b]/50 transition hover:text-[#1e293b]"
           >
-            Masuk sebagai Admin
+            Mode Admin
           </Link>
         </div>
       </div>
