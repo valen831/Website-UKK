@@ -62,6 +62,8 @@ export default function LoginPage() {
         setError("Email sudah terdaftar. Silakan masuk.");
       } else if (msg.includes("Password should be at least")) {
         setError("Password minimal 6 karakter");
+      } else if (msg.includes("Database error") || msg.includes("schema database")) {
+        setError("Database belum siap. Jalankan isi file supabase-schema.sql di Supabase SQL Editor.");
       } else {
         setError(msg);
       }
@@ -78,7 +80,12 @@ export default function LoginPage() {
       await signInWithGoogle();
       // signInWithGoogle redirects to Google — no router.replace needed
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Gagal masuk dengan Google");
+      const msg = err instanceof Error ? err.message : "Gagal masuk dengan Google";
+      if (msg.includes("unexpected_failure") || msg.includes("provider is not enabled")) {
+        setError("Login Google belum diaktifkan. Aktifkan Google provider di Supabase Dashboard → Authentication → Providers.");
+      } else {
+        setError(msg);
+      }
       setSubmitting(false);
     }
   }
