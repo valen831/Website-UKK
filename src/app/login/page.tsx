@@ -1,21 +1,34 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, FormEvent, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-[#f8fafc]">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#e2e8f0] border-t-[#f97316]" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signInWithGoogle, signInWithEmail, signUp, user, loading } = useAuth();
 
-  // Default ke mode daftar, kecuali URL hash #login
-  const [isRegister, setIsRegister] = useState(true);
+  // Default ke mode daftar, kecuali ada error callback pada URL.
+  const [isRegister, setIsRegister] = useState(() => !searchParams.has("error"));
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => searchParams.get("error") ?? "");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
