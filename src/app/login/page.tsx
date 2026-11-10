@@ -9,7 +9,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="flex min-h-screen items-center justify-center bg-[#f8fafc]">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#e2e8f0] border-t-[#f97316]" />
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#e2e8f0] border-t-primary" />
       </div>
     }>
       <LoginContent />
@@ -111,18 +111,18 @@ function LoginContent() {
   if (loading || user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f8fafc]">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#e2e8f0] border-t-[#f97316]" />
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#e2e8f0] border-t-primary" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#fff7ed] px-4 font-[Poppins]">
+    <div className="flex min-h-screen items-center justify-center bg-accent px-4 font-[Poppins]">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
         {/* Logo */}
         <h1 className="mb-6 text-center text-3xl font-bold tracking-tight">
           <span className="text-[#1e293b]">Renta</span>
-          <span className="text-[#f97316]">Go</span>
+          <span className="text-primary">Go</span>
         </h1>
 
         <p className="mb-6 text-center text-sm text-[#1e293b]/60">
@@ -166,7 +166,7 @@ function LoginContent() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-[#f97316] focus:ring-2 focus:ring-[#f97316]/20"
+              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
           )}
           <input
@@ -175,7 +175,7 @@ function LoginContent() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-[#f97316] focus:ring-2 focus:ring-[#f97316]/20"
+            className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
           <input
             type="password"
@@ -184,7 +184,7 @@ function LoginContent() {
             minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-[#f97316] focus:ring-2 focus:ring-[#f97316]/20"
+            className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
           {isRegister && (
             <input
@@ -194,7 +194,7 @@ function LoginContent() {
               minLength={6}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-[#f97316] focus:ring-2 focus:ring-[#f97316]/20"
+              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
           )}
 
@@ -205,7 +205,7 @@ function LoginContent() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-xl bg-[#f97316] py-3 text-sm font-semibold text-white transition hover:bg-[#ea580c] disabled:opacity-50"
+            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white transition hover:bg-primary-dark disabled:opacity-50"
           >
             {submitting ? (
               <span className="inline-flex items-center justify-center gap-2">
@@ -223,7 +223,7 @@ function LoginContent() {
             <button
               type="button"
               onClick={() => { setIsRegister(!isRegister); setError(""); setSuccess(""); }}
-              className="font-semibold text-[#f97316] hover:underline"
+              className="font-semibold text-primary hover:underline"
             >
               {isRegister ? "Masuk" : "Daftar"}
             </button>
