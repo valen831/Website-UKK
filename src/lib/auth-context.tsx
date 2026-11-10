@@ -23,7 +23,7 @@ interface AuthContextType {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<boolean>;
   signOut: () => Promise<void>;
 }
 
@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signUp = useCallback(
-    async (email: string, password: string, name: string) => {
+    async (email: string, password: string, name: string): Promise<boolean> => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -123,6 +123,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
+      // Supabase returns a fake user with no session and no identities when
+      // the email is already registered (to avoid leaking user existence).
+      if (data.user && data.user.identities?.length === 0) {
+        throw new Error("Email sudah terdaftar. Silakan masuk.");
+      }
+
       if (data.user) {
         await supabase.from("profiles").upsert({
           id: data.user.id,
@@ -131,6 +137,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: "user",
         });
       }
+
+      // Return true when session exists (confirm email disabled = auto-login)
+      return !!data.session;
     },
     []
   );

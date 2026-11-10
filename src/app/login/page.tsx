@@ -55,9 +55,13 @@ function LoginContent() {
     setSubmitting(true);
     try {
       if (isRegister) {
-        await signUp(email, password, name);
-        setSuccess("Akun berhasil dibuat! Silakan cek email untuk verifikasi, atau langsung masuk.");
-        // Switch ke mode login setelah daftar berhasil
+        const hasSession = await signUp(email, password, name);
+        if (hasSession) {
+          // Confirm email disabled — user already logged in, redirect
+          router.replace("/");
+          return;
+        }
+        setSuccess("Akun berhasil dibuat! Silakan cek email untuk verifikasi, lalu masuk.");
         setIsRegister(false);
         setPassword("");
         setConfirmPassword("");
