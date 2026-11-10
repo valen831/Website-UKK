@@ -97,11 +97,12 @@ function LoginContent() {
       await signInWithGoogle();
       // signInWithGoogle redirects to Google — no router.replace needed
     } catch (err: unknown) {
+      console.error("Google login error:", err);
       const msg = err instanceof Error ? err.message : "Gagal masuk dengan Google";
       if (msg.includes("unexpected_failure") || msg.includes("provider is not enabled")) {
         setError("Login Google belum diaktifkan. Aktifkan Google provider di Supabase Dashboard → Authentication → Providers.");
       } else {
-        setError(msg);
+        setError("Google login error: " + msg);
       }
       setSubmitting(false);
     }
