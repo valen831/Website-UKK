@@ -115,9 +115,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        // Explain how to fix a failing profile trigger.
+        // "Database error saving new user" means the trigger on auth.users
+        // crashed (likely profiles table missing). Retry without the trigger
+        // by telling the caller the real problem.
         if (error.message?.includes("Database error saving new user")) {
-          throw new Error("Database belum siap (Trigger handle_new_user gagal). Buka Supabase Dashboard > SQL Editor, lalu jalankan isi file supabase-schema.sql.");
+          // Try signing up again won't help — need to fix DB first.
+          // But let's attempt a workaround: the trigger may just need
+          // the exception handler from fix-trigger.sql.
+          throw new Error(
+            "Gagal mendaftar karena database trigger error. " +
+            "Buka Supabase Dashboard → SQL Editor, lalu jalankan isi file fix-trigger.sql. " +
+            "Setelah itu coba daftar lagi."
+          );
         }
         throw error;
       }
