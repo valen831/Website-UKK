@@ -58,6 +58,17 @@ export function AdminClient() {
   const [reportStatus, setReportStatus] = useState<string>("all");
   const [printingOrder, setPrintingOrder] = useState<typeof ordersList[number] | null>(null);
 
+  // PDF section picker
+  const [pdfSections, setPdfSections] = useState({
+    summary: true,
+    categoryChart: true,
+    ordersTable: true,
+  });
+
+  function togglePdfSection(key: keyof typeof pdfSections) {
+    setPdfSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
   // Users state
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -255,8 +266,8 @@ export function AdminClient() {
       {/* Hidden print report */}
       <div id="print-report" style={{ display: "none" }}>
         <div style={{ fontFamily: "Arial, sans-serif", padding: "40px", color: "#000", background: "#fff", maxWidth: "800px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "32px", borderBottom: "2px solid #f97316", paddingBottom: "16px" }}>
-            <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#f97316", margin: "0" }}>
+          <div style={{ textAlign: "center", marginBottom: "32px", borderBottom: "2px solid #e86e2e", paddingBottom: "16px" }}>
+            <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#e86e2e", margin: "0" }}>
               RentaGo
             </h1>
             <p style={{ fontSize: "14px", color: "#666", marginTop: "4px" }}>
@@ -270,46 +281,73 @@ export function AdminClient() {
           </div>
 
           {/* Summary */}
-          <table style={{ width: "100%", marginBottom: "24px", borderCollapse: "collapse" }}>
-            <tbody>
-              <tr>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: "bold", background: "#f9fafb" }}>Total Pesanan</td>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd" }}>{reportStats.totalOrders}</td>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: "bold", background: "#f9fafb" }}>Total Pendapatan</td>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd" }}>{formatCurrency(reportStats.totalRevenue)}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: "bold", background: "#f9fafb" }}>Rata-rata / Pesanan</td>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd" }}>{formatCurrency(reportStats.avgPerOrder)}</td>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: "bold", background: "#f9fafb" }}>Pesanan Aktif</td>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd" }}>{reportStats.activeOrders}</td>
-              </tr>
-            </tbody>
-          </table>
+          {pdfSections.summary && (
+            <table style={{ width: "100%", marginBottom: "24px", borderCollapse: "collapse" }}>
+              <tbody>
+                <tr>
+                  <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: "bold", background: "#f9fafb" }}>Total Pesanan</td>
+                  <td style={{ padding: "8px 12px", border: "1px solid #ddd" }}>{reportStats.totalOrders}</td>
+                  <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: "bold", background: "#f9fafb" }}>Total Pendapatan</td>
+                  <td style={{ padding: "8px 12px", border: "1px solid #ddd" }}>{formatCurrency(reportStats.totalRevenue)}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: "bold", background: "#f9fafb" }}>Rata-rata / Pesanan</td>
+                  <td style={{ padding: "8px 12px", border: "1px solid #ddd" }}>{formatCurrency(reportStats.avgPerOrder)}</td>
+                  <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: "bold", background: "#f9fafb" }}>Pesanan Aktif</td>
+                  <td style={{ padding: "8px 12px", border: "1px solid #ddd" }}>{reportStats.activeOrders}</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+
+          {/* Category breakdown */}
+          {pdfSections.categoryChart && Object.keys(categoryRevenue).length > 0 && (
+            <div style={{ marginBottom: "24px" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: "bold", marginBottom: "12px" }}>Pendapatan per Kategori</h3>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                <thead>
+                  <tr style={{ background: "#f3f4f6" }}>
+                    <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "left" }}>Kategori</th>
+                    <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right" }}>Pendapatan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(categoryRevenue).sort(([, a], [, b]) => b - a).map(([cat, revenue]) => (
+                    <tr key={cat}>
+                      <td style={{ padding: "6px 10px", border: "1px solid #ddd" }}>{cat}</td>
+                      <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* Orders table */}
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-            <thead>
-              <tr style={{ background: "#f3f4f6" }}>
-                <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "left" }}>Kode</th>
-                <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "left" }}>Penyewa</th>
-                <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right" }}>Total</th>
-                <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "center" }}>Status</th>
-                <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "left" }}>Tanggal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.map((order) => (
-                <tr key={order.id}>
-                  <td style={{ padding: "6px 10px", border: "1px solid #ddd", fontFamily: "monospace" }}>{order.code}</td>
-                  <td style={{ padding: "6px 10px", border: "1px solid #ddd" }}>{order.customer.name}</td>
-                  <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(order.grandTotal)}</td>
-                  <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "center" }}>{ORDER_STATUS_LABELS[order.status]}</td>
-                  <td style={{ padding: "6px 10px", border: "1px solid #ddd" }}>{formatShortDate(order.createdAt)}</td>
+          {pdfSections.ordersTable && (
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+              <thead>
+                <tr style={{ background: "#f3f4f6" }}>
+                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "left" }}>Kode</th>
+                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "left" }}>Penyewa</th>
+                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right" }}>Total</th>
+                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "center" }}>Status</th>
+                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "left" }}>Tanggal</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredOrders.map((order) => (
+                  <tr key={order.id}>
+                    <td style={{ padding: "6px 10px", border: "1px solid #ddd", fontFamily: "monospace" }}>{order.code}</td>
+                    <td style={{ padding: "6px 10px", border: "1px solid #ddd" }}>{order.customer.name}</td>
+                    <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(order.grandTotal)}</td>
+                    <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "center" }}>{ORDER_STATUS_LABELS[order.status]}</td>
+                    <td style={{ padding: "6px 10px", border: "1px solid #ddd" }}>{formatShortDate(order.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
           <div style={{ marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #ddd", fontSize: "12px", color: "#999", textAlign: "center" }}>
             Dicetak pada: {new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
@@ -321,8 +359,8 @@ export function AdminClient() {
       <div id="print-nota" style={{ display: "none" }}>
         {printingOrder && (
           <div style={{ fontFamily: "Arial, sans-serif", padding: "40px", color: "#000", background: "#fff", maxWidth: "800px", margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: "24px", borderBottom: "2px solid #f97316", paddingBottom: "16px" }}>
-              <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#f97316", margin: "0" }}>
+            <div style={{ textAlign: "center", marginBottom: "24px", borderBottom: "2px solid #e86e2e", paddingBottom: "16px" }}>
+              <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#e86e2e", margin: "0" }}>
                 RentaGo
               </h1>
               <p style={{ fontSize: "14px", color: "#666", marginTop: "4px" }}>
@@ -397,7 +435,7 @@ export function AdminClient() {
                 </tr>
                 <tr style={{ background: "#fff7ed" }}>
                   <td style={{ padding: "8px 10px", border: "1px solid #ddd", fontWeight: "bold", fontSize: "14px" }}>Grand Total</td>
-                  <td style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right", fontWeight: "bold", fontSize: "14px", color: "#f97316" }}>{formatCurrency(printingOrder.grandTotal)}</td>
+                  <td style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right", fontWeight: "bold", fontSize: "14px", color: "#e86e2e" }}>{formatCurrency(printingOrder.grandTotal)}</td>
                 </tr>
               </tbody>
             </table>
@@ -868,22 +906,57 @@ export function AdminClient() {
                 <div className="flex gap-2">
                   <button
                     onClick={handlePrintReport}
-                    className="px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary-dark transition-colors flex items-center gap-2"
+                    disabled={!pdfSections.summary && !pdfSections.categoryChart && !pdfSections.ordersTable}
+                    className="px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-40"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18.75 12h.008v.008h-.008V12Zm-3 0h.008v.008h-.008V12Z" />
                     </svg>
-                    Cetak PDF
+                    Cetak / Download PDF
                   </button>
-                  <button
-                    onClick={handlePrintReport}
-                    className="px-4 py-2.5 border border-border text-sm font-medium rounded-xl text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                    </svg>
-                    Download PDF
-                  </button>
+                </div>
+              </div>
+
+              {/* PDF Section Picker */}
+              <div className="mt-4 pt-4 border-t border-border">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Pilih isi PDF:</p>
+                <div className="flex flex-wrap gap-3">
+                  <label className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm cursor-pointer transition-colors",
+                    pdfSections.summary ? "border-primary bg-primary/5 text-primary" : "border-border text-gray-500 hover:border-gray-300"
+                  )}>
+                    <input
+                      type="checkbox"
+                      checked={pdfSections.summary}
+                      onChange={() => togglePdfSection("summary")}
+                      className="accent-primary"
+                    />
+                    Ringkasan
+                  </label>
+                  <label className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm cursor-pointer transition-colors",
+                    pdfSections.categoryChart ? "border-primary bg-primary/5 text-primary" : "border-border text-gray-500 hover:border-gray-300"
+                  )}>
+                    <input
+                      type="checkbox"
+                      checked={pdfSections.categoryChart}
+                      onChange={() => togglePdfSection("categoryChart")}
+                      className="accent-primary"
+                    />
+                    Pendapatan per Kategori
+                  </label>
+                  <label className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm cursor-pointer transition-colors",
+                    pdfSections.ordersTable ? "border-primary bg-primary/5 text-primary" : "border-border text-gray-500 hover:border-gray-300"
+                  )}>
+                    <input
+                      type="checkbox"
+                      checked={pdfSections.ordersTable}
+                      onChange={() => togglePdfSection("ordersTable")}
+                      className="accent-primary"
+                    />
+                    Tabel Pesanan
+                  </label>
                 </div>
               </div>
             </div>
