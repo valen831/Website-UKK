@@ -81,16 +81,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    // Use default browser redirect (no skipBrowserRedirect) to avoid
+    // popup-blocker issues caused by async gap before location change.
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: window.location.origin + "/auth/callback",
-        skipBrowserRedirect: true,
       },
     });
     if (error) throw error;
-    // Redirect manually to preserve user-gesture context (avoids popup blocker)
-    if (data?.url) window.location.href = data.url;
   }, []);
 
   const signInWithEmail = useCallback(
