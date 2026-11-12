@@ -16,10 +16,29 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createSupabaseServer();
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
     if (exchangeError) {
       const msg = encodeURIComponent(exchangeError.message);
       return NextResponse.redirect(`${origin}/login?error=${msg}`);
+    }
+
+    // Upsert profile for Google / OAuth signups
+    if (data.user) {
+      const user = data.user;
+      const name =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        (user.email ? user.email.split("@")[0] : "User");
+
+      await supabase.from("profiles").upsert(
+        {
+          id: user.id,
+          name,
+          email: user.email,
+          avatar_url: user.user_metadata?.avatar_url || null,
+        },
+        { onConflict: "id" }
+      );
     }
   }
 

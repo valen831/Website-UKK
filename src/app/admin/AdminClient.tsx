@@ -258,8 +258,11 @@ export function AdminClient() {
       {/* Print-only styles */}
       <style>{`
         @media print {
-          body > * { display: none !important; }
-          ${printingOrder ? '#print-nota' : '#print-report'} { display: block !important; }
+          body * { display: none !important; }
+          #print-report, #print-report * { display: block !important; }
+          #print-nota, #print-nota * { display: block !important; }
+          #print-report { position: absolute; left: 0; top: 0; width: 100%; }
+          #print-nota { position: absolute; left: 0; top: 0; width: 100%; }
         }
       `}</style>
 
