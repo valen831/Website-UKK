@@ -137,13 +137,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Email sudah terdaftar. Silakan masuk.");
       }
 
+      // Create profile row (fallback if trigger didn't fire).
+      // Ignore errors — profile can be created later on next login.
       if (data.user) {
         await supabase.from("profiles").upsert({
           id: data.user.id,
           name,
           email,
           role: "user",
-        });
+        }).then(() => {}, () => {});
       }
 
       // Return true when session exists (confirm email disabled = auto-login)
