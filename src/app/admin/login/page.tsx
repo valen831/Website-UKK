@@ -42,7 +42,12 @@ export default function AdminLoginPage() {
 
       if (profileError) {
         await supabase.auth.signOut();
-        throw profileError;
+        if (profileError.code === "PGRST116" || profileError.message?.includes("0 rows")) {
+          setError("Profil admin belum dibuat. Jalankan fix-signup.sql di Supabase SQL Editor terlebih dahulu.");
+        } else {
+          setError("Database error: " + profileError.message);
+        }
+        return;
       }
 
       if (profile?.role !== "admin") {
@@ -76,7 +81,7 @@ export default function AdminLoginPage() {
           Admin Panel
         </h1>
         <p className="mb-6 text-center text-sm text-[#1e293b]/50">
-          Masukkan password admin untuk melanjutkan
+          Masukkan email dan password admin
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -121,14 +126,19 @@ export default function AdminLoginPage() {
             disabled={submitting}
             className="w-full rounded-xl bg-[#1e293b] py-3 text-sm font-semibold text-white transition hover:bg-[#0f172a] disabled:opacity-50"
           >
-            Masuk ke Admin
+            {submitting ? (
+              <span className="inline-flex items-center justify-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Memproses...
+              </span>
+            ) : "Masuk ke Admin"}
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <Link
             href="/login"
-            className="text-xs text-[#1e293b]/40 hover:text-[#f97316] transition-colors"
+            className="text-xs text-[#1e293b]/40 hover:text-primary transition-colors"
           >
             ← Kembali ke Login User
           </Link>
