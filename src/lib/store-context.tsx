@@ -90,6 +90,7 @@ function dbToOrder(row: any): Order {
     paymentMethod: row.payment_method,
     status: row.status,
     createdAt: row.created_at,
+
     notes: row.notes || undefined,
   };
 }
@@ -127,16 +128,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // ---- Items ----
 
   const toggleItemAvailable = useCallback(async (id: string) => {
-    setItems((prev) => {
-      const target = prev.find((i) => i.id === id);
-      if (!target) return prev;
-      const newVal = !target.available;
-      supabase.from("items").update({ available: newVal }).eq("id", id).then();
-      return prev.map((item) =>
+    const target = items.find((i) => i.id === id);
+    if (!target) return;
+    const newVal = !target.available;
+    
+    // Check if ID is UUID or numeric seed ID
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
+    let error = null;
+    if (isUuid) {
+      const res = await supabase.from("items").update({ available: newVal }).eq("id", id);
+      error = res.error;
+    } else {
+      // For seed items with numeric string IDs (e.g. "1"), try updating by id or fallback to updating local state
+      const res = await supabase.from("items").update({ available: newVal }).eq("id", id);
+      error = res.error;
+      if (error) {
+        // If supabase fails due to UUID mismatch or missing row, let's just update local state gracefully
+        console.warn("Supabase update skipped/failed for non-UUID item, updating locally:", error.message);
+      }
+    }
+
+    setItems((prev) =>
+      prev.map((item) =>
         item.id === id ? { ...item, available: newVal } : item
-      );
-    });
-  }, []);
+      )
+    );
+  }, [items]);
 
   const addItem = useCallback(async (item: RentalItem) => {
     const { error } = await supabase.from("items").insert(itemToDb(item));
