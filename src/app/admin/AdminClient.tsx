@@ -293,11 +293,9 @@ export function AdminClient() {
       {/* Print-only styles */}
       <style>{`
         @media print {
-          body * { display: none !important; }
-          #print-report, #print-report * { display: block !important; }
-          #print-nota, #print-nota * { display: block !important; }
-          #print-report { position: absolute; left: 0; top: 0; width: 100%; }
-          #print-nota { position: absolute; left: 0; top: 0; width: 100%; }
+          body > * { display: none !important; }
+          #print-report, #print-report *, #print-nota, #print-nota * { display: block !important; visibility: visible !important; }
+          #print-report, #print-nota { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: white !important; z-index: 99999 !important; }
         }
       `}</style>
 
