@@ -23,7 +23,7 @@ export function CheckoutClient() {
   const { items, totalPrice, totalDeposit, grandTotal, removeItem, clearCart } =
     useCart();
   const { addOrder } = useStore();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -87,6 +87,27 @@ export function CheckoutClient() {
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
           </svg>
+        </Link>
+      </div>
+    );
+  }
+
+  // Must be logged in
+  if (!authLoading && !user) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+        <div className="text-6xl mb-6">🔐</div>
+        <h1 className="text-2xl font-bold text-secondary mb-3">
+          Login Diperlukan
+        </h1>
+        <p className="text-gray-500 mb-8">
+          Anda harus login terlebih dahulu untuk membuat pesanan agar pesanan tercatat di akun Anda.
+        </p>
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors"
+        >
+          Masuk / Daftar
         </Link>
       </div>
     );
