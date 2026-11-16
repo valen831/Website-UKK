@@ -237,6 +237,41 @@ export function AdminClient() {
     window.print();
   }
 
+  function handleDownloadWord() {
+    const reportEl = document.getElementById("print-report");
+    if (!reportEl) return;
+    const htmlContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <title>Laporan RentaGo</title>
+        <style>
+          body { font-family: 'Calibri', 'Arial', sans-serif; color: #333; line-height: 1.4; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+          th, td { border: 1px solid #d3d3d3; padding: 8px 12px; font-size: 12pt; text-align: left; }
+          th { background-color: #f2f2f2; font-weight: bold; }
+          h1 { color: #e86e2e; font-size: 24pt; margin-bottom: 0; text-align: center; }
+          p { margin: 4px 0; font-size: 11pt; }
+        </style>
+      </head>
+      <body>
+        ${reportEl.innerHTML}
+      </body>
+      </html>
+    `;
+    const blob = new Blob(['\ufeff' + htmlContent], {
+      type: 'application/msword'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Laporan-RentaGo-${new Date().toISOString().slice(0, 10)}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function handlePrintNota(order: typeof ordersList[number]) {
     setPrintingOrder(order);
     setTimeout(() => {
@@ -916,6 +951,16 @@ export function AdminClient() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18.75 12h.008v.008h-.008V12Zm-3 0h.008v.008h-.008V12Z" />
                     </svg>
                     Cetak / Download PDF
+                  </button>
+                  <button
+                    onClick={handleDownloadWord}
+                    disabled={!pdfSections.summary && !pdfSections.categoryChart && !pdfSections.ordersTable}
+                    className="px-4 py-2.5 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-secondary-dark transition-colors flex items-center gap-2 disabled:opacity-40"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                    </svg>
+                    Download Word (.doc)
                   </button>
                 </div>
               </div>
