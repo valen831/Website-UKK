@@ -20,7 +20,7 @@ export default function LoginPage() {
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signInWithGoogle, signInWithEmail, signUp, user, loading } = useAuth();
+  const { signInWithGoogle, signInWithEmail, signUp, verifyOtp, user, loading } = useAuth();
 
   // Default ke mode daftar, kecuali ada error callback pada URL.
   const [isRegister, setIsRegister] = useState(() => !searchParams.has("error"));
@@ -28,6 +28,8 @@ function LoginContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showOtp, setShowOtp] = useState(false);
+  const [otp, setOtp] = useState("");
   const [error, setError] = useState(() => searchParams.get("error") ?? "");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -54,6 +56,12 @@ function LoginContent() {
 
     setSubmitting(true);
     try {
+      if (showOtp) {
+        await verifyOtp(email, otp);
+        router.replace("/");
+        return;
+      }
+
       if (isRegister) {
         const hasSession = await signUp(email, password, name);
         if (hasSession) {
@@ -61,11 +69,8 @@ function LoginContent() {
           router.replace("/");
           return;
         }
-        setSuccess("Akun berhasil dibuat! Silakan cek email untuk verifikasi, lalu masuk.");
-        setIsRegister(false);
-        setPassword("");
-        setConfirmPassword("");
-        setName("");
+        setShowOtp(true);
+        setSuccess("Kode OTP telah dikirim ke email kamu. Masukkan 6 digit kode OTP di bawah.");
       } else {
         await signInWithEmail(email, password);
         router.replace("/");
@@ -159,61 +164,94 @@ function LoginContent() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isRegister && (
-            <input
-              type="text"
-              placeholder="Nama Lengkap"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-            />
-          )}
-          <input
-            type="email"
-            placeholder="Email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
-          {isRegister && (
-            <input
-              type="password"
-              placeholder="Konfirmasi Password"
-              required
-              minLength={6}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-            />
-          )}
+          {showOtp ? (
+            <>
+              <input
+                type="text"
+                placeholder="6-digit kode OTP"
+                required
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-center text-lg tracking-widest text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
 
-          {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
-          )}
+              {error && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
+              )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white transition hover:bg-primary-dark disabled:opacity-50"
-          >
-            {submitting ? (
-              <span className="inline-flex items-center justify-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Memproses...
-              </span>
-            ) : isRegister ? "Daftar Akun" : "Masuk"}
-          </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white transition hover:bg-primary-dark disabled:opacity-50"
+              >
+                {submitting ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Memproses...
+                  </span>
+                ) : "Verifikasi OTP"}
+              </button>
+            </>
+          ) : (
+            <>
+              {isRegister && (
+                <input
+                  type="text"
+                  placeholder="Nama Lengkap"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              )}
+              <input
+                type="email"
+                placeholder="Email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              {isRegister && (
+                <input
+                  type="password"
+                  placeholder="Konfirmasi Password"
+                  required
+                  minLength={6}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              )}
+
+              {error && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white transition hover:bg-primary-dark disabled:opacity-50"
+              >
+                {submitting ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Memproses...
+                  </span>
+                ) : isRegister ? "Daftar Akun" : "Masuk"}
+              </button>
+            </>
+          )}
         </form>
 
         {/* Toggle + Mode Admin */}
@@ -222,7 +260,7 @@ function LoginContent() {
             {isRegister ? "Sudah punya akun?" : "Belum punya akun?"}{" "}
             <button
               type="button"
-              onClick={() => { setIsRegister(!isRegister); setError(""); setSuccess(""); }}
+              onClick={() => { setIsRegister(!isRegister); setShowOtp(false); setOtp(""); setError(""); setSuccess(""); }}
               className="font-semibold text-primary hover:underline"
             >
               {isRegister ? "Masuk" : "Daftar"}
