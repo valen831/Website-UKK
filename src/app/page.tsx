@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FeaturedItems } from "@/components/FeaturedItems";
 import { HeroSearch } from "@/components/HeroSearch";
+import { HomeStats } from "@/components/HomeStats";
 import { CATEGORY_LABELS, CATEGORY_ICONS, Category } from "@/lib/types";
 
 export default function HomePage() {
@@ -35,18 +36,7 @@ export default function HomePage() {
             <HeroSearch />
 
             {/* Stats */}
-            <div className="mt-12 grid grid-cols-3 gap-8 max-w-md mx-auto">
-              {[
-                { value: "500+", label: "Barang" },
-                { value: "2K+", label: "Penyewa" },
-                { value: "4.8★", label: "Rating" },
-              ].map((stat) => (
-                <div key={stat.label}>
-                  <div className="text-2xl font-bold text-white">{stat.value}</div>
-                  <div className="text-sm text-gray-400">{stat.label}</div>
-                </div>
-              ))}
-            </div>
+            <HomeStats />
           </div>
         </div>
       </section>
