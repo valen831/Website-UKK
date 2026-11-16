@@ -271,7 +271,7 @@ export function OrderStatusClient() {
   return (
     <div className="min-h-screen bg-gray-50/80">
       {/* Header */}
-      <div className="bg-white border-b border-border sticky top-0 z-30">
+      <div className="bg-white border-b border-border sticky top-16 z-30">
         <div className="max-w-3xl mx-auto px-4 pt-4 pb-0">
           <h1 className="text-lg font-bold text-secondary mb-3">Pesanan Saya</h1>
 
