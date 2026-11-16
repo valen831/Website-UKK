@@ -60,13 +60,13 @@ function LoginContent() {
     setSubmitting(true);
     try {
       if (showOtp) {
-        await verifyOtp(email, otp);
+        await verifyOtp(email, otp, password);
         router.replace("/");
         return;
       }
 
       if (isRegister) {
-        const hasSession = await signUp(email, password, name);
+        const hasSession = await signUp(email, name);
         if (hasSession) {
           // Confirm email disabled — user already logged in, redirect
           router.replace("/");

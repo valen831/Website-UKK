@@ -23,8 +23,8 @@ interface AuthContextType {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<boolean>;
-  verifyOtp: (email: string, token: string) => Promise<void>;
+  signUp: (email: string, name: string) => Promise<boolean>;
+  verifyOtp: (email: string, token: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -105,64 +105,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signUp = useCallback(
-    async (email: string, password: string, name: string): Promise<boolean> => {
-      const { data, error } = await supabase.auth.signUp({
+    async (email: string, name: string): Promise<boolean> => {
+      // Use signInWithOtp with shouldCreateUser: true to send a 6-digit OTP code to real email.
+      const { error } = await supabase.auth.signInWithOtp({
         email,
-        password,
         options: {
           data: { full_name: name },
-          emailRedirectTo: window.location.origin + "/auth/callback",
+          shouldCreateUser: true,
         },
       });
 
       if (error) {
-        // "Database error saving new user" means the trigger on auth.users
-        // crashed (likely profiles table missing). Retry without the trigger
-        // by telling the caller the real problem.
-        if (error.message?.includes("Database error saving new user")) {
-          // Try signing up again won't help — need to fix DB first.
-          // But let's attempt a workaround: the trigger may just need
-          // the exception handler from fix-trigger.sql.
-          throw new Error(
-            "Gagal mendaftar karena database trigger error. " +
-            "Buka Supabase Dashboard → SQL Editor, lalu jalankan isi file fix-trigger.sql. " +
-            "Setelah itu coba daftar lagi."
-          );
-        }
         throw error;
       }
 
-      // Supabase returns a fake user with no session and no identities when
-      // the email is already registered (to avoid leaking user existence).
-      if (data.user && data.user.identities?.length === 0) {
-        throw new Error("Email sudah terdaftar. Silakan masuk.");
-      }
-
-      // Create profile row (fallback if trigger didn't fire).
-      // Ignore errors — profile can be created later on next login.
-      if (data.user) {
-        await supabase.from("profiles").upsert({
-          id: data.user.id,
-          name,
-          email,
-          role: "user",
-        }).then(() => {}, () => {});
-      }
-
-      // Return true when session exists (confirm email disabled = auto-login)
-      return !!data.session;
+      // Always return false so the UI prompts the user to enter the 6-digit OTP code sent to their email
+      return false;
     },
     []
   );
 
-  const verifyOtp = useCallback(async (email: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: "signup",
-    });
-    if (error) throw error;
-  }, []);
+  const verifyOtp = useCallback(
+    async (email: string, token: string, password: string) => {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: "email",
+      });
+      if (error) throw error;
+
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password,
+      });
+      if (passwordError) throw passwordError;
+    },
+    []
+  );
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
