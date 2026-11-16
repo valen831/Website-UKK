@@ -56,8 +56,6 @@ export function AdminClient() {
   const [reportFrom, setReportFrom] = useState("");
   const [reportTo, setReportTo] = useState("");
   const [reportStatus, setReportStatus] = useState<string>("all");
-  const [printingOrder, setPrintingOrder] = useState<typeof ordersList[number] | null>(null);
-
   // PDF section picker
   const [pdfSections, setPdfSections] = useState({
     summary: true,
@@ -273,11 +271,87 @@ export function AdminClient() {
   }
 
   function handlePrintNota(order: typeof ordersList[number]) {
-    setPrintingOrder(order);
-    setTimeout(() => {
-      window.print();
-      setPrintingOrder(null);
-    }, 100);
+    const escapeHtml = (value: string) => {
+      const entities: Record<string, string> = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      };
+      return value.replace(/[&<>"']/g, (character) => entities[character]);
+    };
+    const dash = "--------------------------------";
+    const dateStr = new Date(order.createdAt).toLocaleDateString("id-ID", {
+      day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+    });
+
+    let itemsHtml = "";
+    order.items.forEach((ci) => {
+      itemsHtml += `
+        <tr><td colspan="3" style="padding:2px 0;font-size:12px;">${escapeHtml(ci.item.name)}</td></tr>
+        <tr style="font-size:11px;color:#555;">
+          <td style="padding:0 0 4px;">${ci.days} hari x ${formatCurrency(ci.item.pricePerDay)}</td>
+          <td></td>
+          <td style="text-align:right;">${formatCurrency(ci.subtotal)}</td>
+        </tr>`;
+    });
+
+    const notaHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Nota ${escapeHtml(order.code)}</title>
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Courier New', monospace; width: 80mm; margin: 0 auto; padding: 8mm 5mm; color: #000; font-size: 12px; }
+  .center { text-align: center; }
+  .right { text-align: right; }
+  .bold { font-weight: bold; }
+  .dash { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  td { vertical-align: top; padding: 1px 0; }
+  .total-row td { padding-top: 3px; font-size: 13px; }
+  .grand td { font-size: 15px; font-weight: bold; padding-top: 4px; }
+  @media print { body { width: 80mm; } }
+</style></head><body>
+  <div class="center bold" style="font-size:18px;letter-spacing:2px;">RENTAGO</div>
+  <div class="center" style="font-size:10px;color:#666;margin-top:2px;">Jasa Penyewaan Barang</div>
+  <div class="center" style="font-size:10px;color:#666;">Telp: 0812-XXXX-XXXX</div>
+  <hr class="dash">
+  <table>
+    <tr><td>No</td><td>:</td><td>${escapeHtml(order.code)}</td></tr>
+    <tr><td>Tgl</td><td>:</td><td>${dateStr}</td></tr>
+    <tr><td>Nama</td><td>:</td><td>${escapeHtml(order.customer.name)}</td></tr>
+    <tr><td>WA</td><td>:</td><td>${escapeHtml(order.customer.whatsapp)}</td></tr>
+    <tr><td>Bayar</td><td>:</td><td>${escapeHtml(PAYMENT_METHOD_LABELS[order.paymentMethod])}</td></tr>
+  </table>
+  <hr class="dash">
+  <table>${itemsHtml}</table>
+  <hr class="dash">
+  <table>
+    <tr class="total-row"><td>Subtotal</td><td></td><td class="right">${formatCurrency(order.totalPrice)}</td></tr>
+    <tr class="total-row"><td>Deposit</td><td></td><td class="right">${formatCurrency(order.totalDeposit)}</td></tr>
+    <tr><td colspan="3"><hr class="dash"></td></tr>
+    <tr class="grand"><td>TOTAL</td><td></td><td class="right">${formatCurrency(order.grandTotal)}</td></tr>
+  </table>
+  <hr class="dash">
+  ${order.notes ? `<div style="font-size:10px;margin-bottom:4px;">Catatan: ${escapeHtml(order.notes)}</div><hr class="dash">` : ""}
+  <div class="center" style="font-size:10px;margin-top:4px;">
+    * Deposit dikembalikan saat<br>barang kembali dalam kondisi baik
+  </div>
+  <div class="center" style="font-size:10px;margin-top:6px;">
+    Terima kasih telah menyewa<br>di RentaGo!
+  </div>
+  <div class="center" style="font-size:9px;color:#999;margin-top:8px;">
+    ${dash}
+  </div>
+</body></html>`;
+
+    const w = window.open("", "_blank", "width=350,height=600");
+    if (w) {
+      w.document.write(notaHtml);
+      w.document.close();
+      w.onload = () => { w.print(); };
+    }
   }
 
   // ---- Tabs config ----
@@ -294,8 +368,8 @@ export function AdminClient() {
       <style>{`
         @media print {
           body > * { display: none !important; }
-          #print-report, #print-report *, #print-nota, #print-nota * { display: block !important; visibility: visible !important; }
-          #print-report, #print-nota { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: white !important; z-index: 99999 !important; }
+          #print-report, #print-report * { display: block !important; visibility: visible !important; }
+          #print-report { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: white !important; z-index: 99999 !important; }
         }
       `}</style>
 
@@ -389,105 +463,6 @@ export function AdminClient() {
             Dicetak pada: {new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
           </div>
         </div>
-      </div>
-
-      {/* Hidden print nota (per-order invoice) */}
-      <div id="print-nota" style={{ display: "none" }}>
-        {printingOrder && (
-          <div style={{ fontFamily: "Arial, sans-serif", padding: "40px", color: "#000", background: "#fff", maxWidth: "800px", margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: "24px", borderBottom: "2px solid #e86e2e", paddingBottom: "16px" }}>
-              <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#e86e2e", margin: "0" }}>
-                RentaGo
-              </h1>
-              <p style={{ fontSize: "14px", color: "#666", marginTop: "4px" }}>
-                Nota Pembelian / Invoice
-              </p>
-            </div>
-
-            {/* Order info */}
-            <table style={{ width: "100%", marginBottom: "20px", fontSize: "13px" }}>
-              <tbody>
-                <tr>
-                  <td style={{ padding: "4px 0", fontWeight: "bold", width: "140px" }}>Kode Pesanan</td>
-                  <td style={{ padding: "4px 0" }}>: {printingOrder.code}</td>
-                  <td style={{ padding: "4px 0", fontWeight: "bold", width: "140px" }}>Tanggal</td>
-                  <td style={{ padding: "4px 0" }}>: {formatShortDate(printingOrder.createdAt)}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: "4px 0", fontWeight: "bold" }}>Nama Penyewa</td>
-                  <td style={{ padding: "4px 0" }}>: {printingOrder.customer.name}</td>
-                  <td style={{ padding: "4px 0", fontWeight: "bold" }}>Status</td>
-                  <td style={{ padding: "4px 0" }}>: {ORDER_STATUS_LABELS[printingOrder.status]}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: "4px 0", fontWeight: "bold" }}>No. WhatsApp</td>
-                  <td style={{ padding: "4px 0" }}>: {printingOrder.customer.whatsapp}</td>
-                  <td style={{ padding: "4px 0", fontWeight: "bold" }}>Pembayaran</td>
-                  <td style={{ padding: "4px 0" }}>: {PAYMENT_METHOD_LABELS[printingOrder.paymentMethod]}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: "4px 0", fontWeight: "bold", verticalAlign: "top" }}>Alamat</td>
-                  <td colSpan={3} style={{ padding: "4px 0" }}>: {printingOrder.customer.address}</td>
-                </tr>
-              </tbody>
-            </table>
-
-            {/* Items table */}
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", marginBottom: "16px" }}>
-              <thead>
-                <tr style={{ background: "#f3f4f6" }}>
-                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "left" }}>No</th>
-                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "left" }}>Nama Barang</th>
-                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "center" }}>Durasi</th>
-                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right" }}>Harga/Hari</th>
-                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right" }}>Subtotal</th>
-                  <th style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right" }}>Deposit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {printingOrder.items.map((ci, idx) => (
-                  <tr key={idx}>
-                    <td style={{ padding: "6px 10px", border: "1px solid #ddd" }}>{idx + 1}</td>
-                    <td style={{ padding: "6px 10px", border: "1px solid #ddd" }}>{ci.item.name}</td>
-                    <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "center" }}>{ci.days} hari</td>
-                    <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(ci.item.pricePerDay)}</td>
-                    <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(ci.subtotal)}</td>
-                    <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(ci.deposit)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Totals */}
-            <table style={{ width: "300px", marginLeft: "auto", fontSize: "13px", borderCollapse: "collapse" }}>
-              <tbody>
-                <tr>
-                  <td style={{ padding: "6px 10px", border: "1px solid #ddd", fontWeight: "bold" }}>Total Sewa</td>
-                  <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(printingOrder.totalPrice)}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: "6px 10px", border: "1px solid #ddd", fontWeight: "bold" }}>Total Deposit</td>
-                  <td style={{ padding: "6px 10px", border: "1px solid #ddd", textAlign: "right" }}>{formatCurrency(printingOrder.totalDeposit)}</td>
-                </tr>
-                <tr style={{ background: "#fff7ed" }}>
-                  <td style={{ padding: "8px 10px", border: "1px solid #ddd", fontWeight: "bold", fontSize: "14px" }}>Grand Total</td>
-                  <td style={{ padding: "8px 10px", border: "1px solid #ddd", textAlign: "right", fontWeight: "bold", fontSize: "14px", color: "#e86e2e" }}>{formatCurrency(printingOrder.grandTotal)}</td>
-                </tr>
-              </tbody>
-            </table>
-
-            {printingOrder.notes && (
-              <div style={{ marginTop: "16px", padding: "8px 12px", background: "#f9fafb", borderRadius: "4px", fontSize: "12px" }}>
-                <strong>Catatan:</strong> {printingOrder.notes}
-              </div>
-            )}
-
-            <div style={{ marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #ddd", fontSize: "12px", color: "#999", textAlign: "center" }}>
-              * Deposit dikembalikan saat barang dikembalikan dalam kondisi baik.<br />
-              Dicetak pada: {new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Main content */}
