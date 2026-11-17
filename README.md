@@ -323,15 +323,7 @@ rental-app/
 
 ---
 
-## 🧑‍💻 Admin Access
 
-Untuk menjadikan user sebagai admin, jalankan SQL di Supabase SQL Editor:
-
-```sql
-UPDATE profiles SET role = 'admin' WHERE email = 'email@kamu.com';
-```
-
-Lalu akses admin panel via `/admin/login`.
 
 ---
 
