@@ -37,9 +37,30 @@ function LoginContent() {
   const [forgotMode, setForgotMode] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
+  const [isResetMode, setIsResetMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+
   useEffect(() => {
-    if (!loading && user) router.replace("/");
-  }, [user, loading, router]);
+    // Cek apakah ada hash atau query parameter recovery dari Supabase (mis. #access_token=...&type=recovery atau ?type=recovery)
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery") || searchParams.get("type") === "recovery") {
+      setIsResetMode(true);
+    }
+
+    // Tangkap event auth state change untuk recovery
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsResetMode(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!loading && user && !isResetMode) router.replace("/");
+  }, [user, loading, router, isResetMode]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -135,6 +156,37 @@ function LoginContent() {
     }
   }
 
+  async function handleUpdatePassword(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (newPassword.length < 6) {
+      setError("Password minimal 6 karakter");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setError("Password dan konfirmasi password tidak cocok");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (error) throw error;
+      setSuccess("Password berhasil diubah! Mengalihkan...");
+      setTimeout(() => {
+        router.replace("/");
+      }, 1500);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal memperbarui password");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   if (loading || user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f8fafc]">
@@ -193,8 +245,47 @@ function LoginContent() {
         )}
 
         {/* Form */}
-        <form onSubmit={forgotMode ? handleResetPassword : handleSubmit} className="space-y-4">
-          {forgotMode ? (
+        <form onSubmit={isResetMode ? handleUpdatePassword : forgotMode ? handleResetPassword : handleSubmit} className="space-y-4">
+          {isResetMode ? (
+            <>
+              <p className="text-xs text-center text-gray-600 mb-2">Masukkan password baru untuk akun Anda</p>
+              <input
+                type="password"
+                placeholder="Password Baru (min. 6 karakter)"
+                required
+                minLength={6}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              <input
+                type="password"
+                placeholder="Konfirmasi Password Baru"
+                required
+                minLength={6}
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+
+              {error && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white transition hover:bg-primary-dark disabled:opacity-50"
+              >
+                {submitting ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Memproses...
+                  </span>
+                ) : "Simpan Password Baru"}
+              </button>
+            </>
+          ) : forgotMode ? (
             <>
               <input
                 type="email"
