@@ -104,6 +104,9 @@ export function ItemDetailClient({ item: initialItem }: Props) {
             <span className="px-3 py-1 bg-accent text-primary text-xs font-medium rounded-lg capitalize">
               {CATEGORY_LABELS[item.category]}
             </span>
+            <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-lg font-semibold">
+              Stok Sisa: {item.stock}
+            </span>
             {item.available ? (
               <span className="px-3 py-1 bg-green-50 text-green-600 text-xs font-medium rounded-lg">
                 ✓ Tersedia
