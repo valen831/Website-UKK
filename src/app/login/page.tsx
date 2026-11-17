@@ -37,17 +37,18 @@ function LoginContent() {
   const [forgotMode, setForgotMode] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  const [isResetMode, setIsResetMode] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash;
+      const params = new URLSearchParams(window.location.search);
+      return hash.includes("type=recovery") || params.get("type") === "recovery";
+    }
+    return false;
+  });
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
   useEffect(() => {
-    // Cek apakah ada hash atau query parameter recovery dari Supabase (mis. #access_token=...&type=recovery atau ?type=recovery)
-    const hash = window.location.hash;
-    if (hash.includes("type=recovery") || searchParams.get("type") === "recovery") {
-      setIsResetMode(true);
-    }
-
     // Tangkap event auth state change untuk recovery
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
@@ -56,7 +57,7 @@ function LoginContent() {
     });
 
     return () => subscription.unsubscribe();
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     if (!loading && user && !isResetMode) router.replace("/");
@@ -94,7 +95,7 @@ function LoginContent() {
           return;
         }
         setShowOtp(true);
-        setSuccess("Kode OTP telah dikirim ke email kamu. Masukkan 6 digit kode OTP di bawah.");
+        setSuccess("Kode OTP telah dikirim ke email kamu. Masukkan kode OTP di bawah.");
       } else {
         await signInWithEmail(email, password);
         router.replace("/");
@@ -187,7 +188,7 @@ function LoginContent() {
     }
   }
 
-  if (loading || user) {
+  if (loading || (user && !isResetMode)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f8fafc]">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#e2e8f0] border-t-primary" />
@@ -330,9 +331,9 @@ function LoginContent() {
             <>
               <input
                 type="text"
-                placeholder="6-digit kode OTP"
+                placeholder="Kode OTP"
                 required
-                maxLength={6}
+                maxLength={8}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-center text-lg tracking-widest text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
