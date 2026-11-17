@@ -35,17 +35,13 @@ export function ItemCard({ item }: ItemCardProps) {
 
       {/* Content */}
       <div className="p-4">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center justify-between mb-2">
           <span className="px-2.5 py-0.5 bg-accent text-primary text-xs font-medium rounded-md capitalize">
             {item.category}
           </span>
-          <div className="flex items-center gap-1 text-xs text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-yellow-400">
-              <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clipRule="evenodd" />
-            </svg>
-            <span>{item.rating}</span>
-            <span className="text-gray-300">({item.reviewCount})</span>
-          </div>
+          <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+            Stok: {item.stock}
+          </span>
         </div>
 
         <h3 className="font-semibold text-secondary text-sm leading-snug mb-2 line-clamp-2 group-hover:text-primary transition-colors">
