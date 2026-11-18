@@ -153,15 +153,11 @@ export function AdminClient() {
     if (editingItem) {
       updateItem(editingItem.id, {
         name: formName,
-        slug,
         category: formCategory,
         pricePerDay: Number(formPrice),
         deposit: Number(formDeposit),
         description: formDescription,
         stock: Number(formStock),
-        images: formImage
-          ? [formImage, ...editingItem.images.slice(1)]
-          : editingItem.images,
       });
     } else {
       const newItem: RentalItem = {

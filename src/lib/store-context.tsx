@@ -55,20 +55,29 @@ function dbToItem(row: any): RentalItem {
   };
 }
 
+const ITEM_DB_FIELDS: Record<string, string> = {
+  name: "name",
+  category: "category",
+  description: "description",
+  specifications: "specifications",
+  pricePerDay: "price_per_day",
+  deposit: "deposit",
+  images: "images",
+  stock: "stock",
+  rating: "rating",
+  reviewCount: "review_count",
+  featured: "featured",
+  available: "available",
+  bookedDates: "booked_dates",
+  slug: "slug",
+};
+
 function itemToDb(item: Partial<RentalItem>): Record<string, unknown> {
-  const { id: _id, ...rest } = item as any;
-  const db: any = { ...rest };
-  if ("pricePerDay" in item) {
-    db.price_per_day = item.pricePerDay;
-    delete db.pricePerDay;
-  }
-  if ("reviewCount" in item) {
-    db.review_count = item.reviewCount;
-    delete db.reviewCount;
-  }
-  if ("bookedDates" in item) {
-    db.booked_dates = item.bookedDates;
-    delete db.bookedDates;
+  const db: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(item)) {
+    if (key === "id") continue;
+    const col = ITEM_DB_FIELDS[key];
+    if (col) db[col] = value;
   }
   return db;
 }
@@ -110,9 +119,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ]);
       
       if (itemsRes.error || !itemsRes.data || itemsRes.data.length === 0) {
-        // Auto-seed items ke Supabase jika kosong agar pakai UUID valid
+        // Auto-seed items ke Supabase tanpa id statis agar generate UUID valid
         await supabase.from("items").insert(
-          rentalItems.map(({ id, ...rest }) => ({
+          rentalItems.map(({ id: _id, ...rest }) => ({
             ...rest,
             price_per_day: rest.pricePerDay,
             review_count: rest.reviewCount,
@@ -120,7 +129,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }))
         );
         const { data: newItems } = await supabase.from("items").select("*").order("created_at", { ascending: false });
-        setItems(newItems && newItems.length > 0 ? newItems.map(dbToItem) : rentalItems);
+        setItems(newItems && newItems.length > 0 ? newItems.map(dbToItem) : []);
       } else {
         setItems(itemsRes.data.map(dbToItem));
       }
