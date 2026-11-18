@@ -142,22 +142,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const target = items.find((i) => i.id === id);
     if (!target) return;
     const newVal = !target.available;
-    
-    // Check if ID is UUID or numeric seed ID
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    
-    let error = null;
-    if (isUuid) {
-      const res = await supabase.from("items").update({ available: newVal }).eq("id", id);
-      error = res.error;
-    } else {
-      // For seed items with numeric string IDs (e.g. "1"), try updating by id or fallback to updating local state
-      const res = await supabase.from("items").update({ available: newVal }).eq("id", id);
-      error = res.error;
-      if (error) {
-        // If supabase fails due to UUID mismatch or missing row, let's just update local state gracefully
-        console.warn("Supabase update skipped/failed for non-UUID item, updating locally:", error.message);
-      }
+
+    const { error } = await supabase.from("items").update({ available: newVal }).eq("id", id);
+    if (error) {
+      console.error("toggleItemAvailable error:", error.message);
+      alert("Gagal mengubah status: " + error.message);
     }
 
     setItems((prev) =>
@@ -168,12 +157,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [items]);
 
   const addItem = useCallback(async (item: RentalItem) => {
-    // Strip client-generated id so Supabase generates a valid UUID
     const { id: _discard, ...rest } = item;
     const dbPayload = itemToDb(rest);
     const { data, error } = await supabase.from("items").insert(dbPayload).select().single();
     if (error) {
-      console.error("addItem error:", error.message);
       alert("Gagal menambah barang: " + error.message);
       return;
     }
@@ -187,7 +174,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .update(itemToDb(data))
         .eq("id", id);
       if (error) {
-        console.error("updateItem error:", error.message);
         alert("Gagal menyimpan perubahan: " + error.message);
         return;
       }
@@ -200,7 +186,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const deleteItem = useCallback(async (id: string) => {
     const { error } = await supabase.from("items").delete().eq("id", id);
-    if (!error) setItems((prev) => prev.filter((item) => item.id !== id));
+    if (error) {
+      alert("Gagal menghapus barang: " + error.message);
+      return;
+    }
+    setItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
   // ---- Orders ----
@@ -231,13 +221,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .from("orders")
         .update({ status })
         .eq("id", id);
-      if (!error) {
-        setOrders((prev) =>
-          prev.map((order) =>
-            order.id === id ? { ...order, status } : order
-          )
-        );
+      if (error) {
+        alert("Gagal mengubah status pesanan: " + error.message);
+        return;
       }
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === id ? { ...order, status } : order
+        )
+      );
     },
     []
   );
