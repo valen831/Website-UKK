@@ -333,7 +333,7 @@ function LoginContent() {
                 type="text"
                 placeholder="Kode OTP"
                 required
-                maxLength={8}
+                maxLength={6}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-center text-lg tracking-widest text-[#1e293b] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"

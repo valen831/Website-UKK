@@ -109,7 +109,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ]);
       
       if (itemsRes.error || !itemsRes.data || itemsRes.data.length === 0) {
-        setItems(rentalItems);
+        // Auto-seed items ke Supabase jika kosong agar pakai UUID valid
+        await supabase.from("items").insert(
+          rentalItems.map(({ id, ...rest }) => ({
+            ...rest,
+            price_per_day: rest.pricePerDay,
+            review_count: rest.reviewCount,
+            booked_dates: rest.bookedDates,
+          }))
+        );
+        const { data: newItems } = await supabase.from("items").select("*").order("created_at", { ascending: false });
+        setItems(newItems && newItems.length > 0 ? newItems.map(dbToItem) : rentalItems);
       } else {
         setItems(itemsRes.data.map(dbToItem));
       }
