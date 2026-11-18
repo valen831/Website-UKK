@@ -127,12 +127,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyOtp = useCallback(
     async (email: string, token: string, password: string) => {
-      const { error } = await supabase.auth.verifyOtp({
+      const { data: otpData, error } = await supabase.auth.verifyOtp({
         email,
         token,
         type: "email",
       });
       if (error) throw error;
+
+      // Ensure profile exists (fallback if trigger didn't fire)
+      if (otpData.user) {
+        const meta = otpData.user.user_metadata;
+        await supabase.from("profiles").upsert(
+          {
+            id: otpData.user.id,
+            name: meta?.full_name || meta?.name || email.split("@")[0],
+            email: otpData.user.email,
+            avatar_url: meta?.avatar_url || null,
+          },
+          { onConflict: "id" }
+        );
+      }
 
       const { error: passwordError } = await supabase.auth.updateUser({
         password,

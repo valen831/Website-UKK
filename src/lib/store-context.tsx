@@ -56,7 +56,8 @@ function dbToItem(row: any): RentalItem {
 }
 
 function itemToDb(item: Partial<RentalItem>): Record<string, unknown> {
-  const db: any = { ...item };
+  const { id: _id, ...rest } = item as any;
+  const db: any = { ...rest };
   if ("pricePerDay" in item) {
     db.price_per_day = item.pricePerDay;
     delete db.pricePerDay;
@@ -167,8 +168,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [items]);
 
   const addItem = useCallback(async (item: RentalItem) => {
-    const { error } = await supabase.from("items").insert(itemToDb(item));
-    if (!error) setItems((prev) => [item, ...prev]);
+    // Strip client-generated id so Supabase generates a valid UUID
+    const { id: _discard, ...rest } = item;
+    const dbPayload = itemToDb(rest);
+    const { data, error } = await supabase.from("items").insert(dbPayload).select().single();
+    if (error) {
+      console.error("addItem error:", error.message);
+      alert("Gagal menambah barang: " + error.message);
+      return;
+    }
+    setItems((prev) => [dbToItem(data), ...prev]);
   }, []);
 
   const updateItem = useCallback(
@@ -177,11 +186,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .from("items")
         .update(itemToDb(data))
         .eq("id", id);
-      if (!error) {
-        setItems((prev) =>
-          prev.map((item) => (item.id === id ? { ...item, ...data } : item))
-        );
+      if (error) {
+        console.error("updateItem error:", error.message);
+        alert("Gagal menyimpan perubahan: " + error.message);
+        return;
       }
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, ...data } : item))
+      );
     },
     []
   );
