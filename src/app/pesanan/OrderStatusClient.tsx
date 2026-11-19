@@ -114,31 +114,71 @@ export function OrderStatusClient() {
     setLoading(true);
     setError(null);
 
-    let query = supabase
+    // Halaman "Pesanan Saya" HANYA memuat pesanan milik akun yang sedang login (baik user biasa maupun admin)
+    supabase
       .from("orders")
       .select("*")
-      .order("created_at", { ascending: false });
-
-    // Filter user_id jika user bukan admin (user biasa hanya melihat pesanannya sendiri)
-    if (profile?.role !== "admin") {
-      query = query.eq("user_id", user.id);
-    }
-
-    query.then(({ data, error: err }) => {
-      if (cancelled) return;
-      if (err) {
-        setError(err.message);
-        setOrders([]);
-      } else {
-        setOrders((data as SupabaseOrder[]) ?? []);
-      }
-      setLoading(false);
-    });
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .then(({ data, error: err }) => {
+        if (cancelled) return;
+        if (err) {
+          setError(err.message);
+          setOrders([]);
+        } else {
+          setOrders((data as SupabaseOrder[]) ?? []);
+        }
+        setLoading(false);
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [user, profile, authLoading]);
+  }, [user, authLoading]);
+
+  // Dynamic code lookup from Supabase if not found in user's own orders (misal admin mencari pesanan pelanggan lewat kode)
+  const [remoteOrders, setRemoteOrders] = useState<SupabaseOrder[]>([]);
+  const [isSearchingRemote, setIsSearchingRemote] = useState(false);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q || q.length < 3) {
+      setRemoteOrders([]);
+      setIsSearchingRemote(false);
+      return;
+    }
+
+    // Cek apakah sudah ada di pesanan milik akun sendiri
+    const existsLocally = orders.some((o) =>
+      o.code.toLowerCase().includes(q.toLowerCase())
+    );
+    if (existsLocally) {
+      setRemoteOrders([]);
+      setIsSearchingRemote(false);
+      return;
+    }
+
+    // Jika tidak ada di pesanan saya (misal admin mengecek pesanan pelanggan lewat kode)
+    let cancelled = false;
+    setIsSearchingRemote(true);
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("*")
+        .ilike("code", `%${q}%`)
+        .limit(5);
+
+      if (!cancelled) {
+        setRemoteOrders((data as SupabaseOrder[]) || []);
+        setIsSearchingRemote(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [searchQuery, orders]);
 
   // Guest code lookup handler
   const handleGuestLookup = useCallback(async () => {
@@ -164,18 +204,20 @@ export function OrderStatusClient() {
 
   // Filter + search (for logged-in user)
   const filteredOrders = useMemo(() => {
-    let result = [...orders];
-
-    // Jika user mengetik pencarian kode pesanan, cari di seluruh pesanan tanpa terikat tab status
+    // Jika user mengetik pencarian kode pesanan
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
-      result = result.filter((o) => o.code.toLowerCase().includes(q));
-    } else if (activeTab !== "all") {
-      result = result.filter((o) => o.status === activeTab);
+      const localMatches = orders.filter((o) => o.code.toLowerCase().includes(q));
+      if (localMatches.length > 0) return localMatches;
+      return remoteOrders;
     }
 
-    return result;
-  }, [orders, activeTab, searchQuery]);
+    if (activeTab !== "all") {
+      return orders.filter((o) => o.status === activeTab);
+    }
+
+    return orders;
+  }, [orders, activeTab, searchQuery, remoteOrders]);
 
   // Tab counts
   const tabCounts = useMemo(() => {
@@ -296,8 +338,11 @@ export function OrderStatusClient() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari kode pesanan..."
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-100 rounded-full text-sm outline-none focus:bg-white focus:ring-2 focus:ring-primary/30 border border-transparent focus:border-primary/40 transition-all"
+              className="w-full pl-10 pr-10 py-2.5 bg-gray-100 rounded-full text-sm outline-none focus:bg-white focus:ring-2 focus:ring-primary/30 border border-transparent focus:border-primary/40 transition-all"
             />
+            {isSearchingRemote && (
+              <span className="absolute right-9 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            )}
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
