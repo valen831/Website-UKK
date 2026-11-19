@@ -123,6 +123,7 @@ export const PAYMENT_CATEGORIES: {
 export interface Order {
   id: string;
   code: string;
+  userId?: string | null;
   items: CartItem[];
   totalPrice: number;
   totalDeposit: number;

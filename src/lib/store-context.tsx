@@ -20,15 +20,18 @@ interface StoreContextType {
   addItem: (item: RentalItem) => void;
   updateItem: (id: string, data: Partial<RentalItem>) => void;
   deleteItem: (id: string) => void;
+  refreshItems: () => Promise<void>;
 
   // Orders
   orders: Order[];
-  addOrder: (order: Order) => void;
-  updateOrderStatus: (id: string, status: Order["status"]) => void;
+  addOrder: (order: Order) => Promise<boolean>;
+  updateOrderStatus: (id: string, status: Order["status"], code?: string) => Promise<boolean>;
   getOrderByCode: (code: string) => Order | undefined;
+  refreshOrders: () => Promise<void>;
 
   // Loading state
   loading: boolean;
+  ordersLoading: boolean;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -86,21 +89,21 @@ function dbToOrder(row: any): Order {
   return {
     id: row.id,
     code: row.code,
-    items: row.items,
-    totalPrice: row.total_price,
-    totalDeposit: row.total_deposit,
-    grandTotal: row.grand_total,
+    userId: row.user_id || undefined,
+    items: row.items || [],
+    totalPrice: row.total_price || 0,
+    totalDeposit: row.total_deposit || 0,
+    grandTotal: row.grand_total || 0,
     customer: {
-      name: row.customer_name,
-      whatsapp: row.customer_whatsapp,
-      address: row.customer_address,
+      name: row.customer_name || "",
+      whatsapp: row.customer_whatsapp || "",
+      address: row.customer_address || "",
       idNumber: row.customer_id_number || undefined,
     },
-    deliveryMethod: row.delivery_method,
-    paymentMethod: row.payment_method,
-    status: row.status,
-    createdAt: row.created_at,
-
+    deliveryMethod: row.delivery_method || "pickup",
+    paymentMethod: row.payment_method || "cash",
+    status: row.status || "pending",
+    createdAt: row.created_at || new Date().toISOString(),
     notes: row.notes || undefined,
   };
 }
@@ -109,10 +112,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<RentalItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
+  const refreshItems = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("items")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setItems(data.map(dbToItem));
+    }
+  }, []);
+
+  const refreshOrders = useCallback(async () => {
+    setOrdersLoading(true);
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setOrders(data.map(dbToOrder));
+    }
+    setOrdersLoading(false);
+  }, []);
 
   // Fetch items and orders on mount
   useEffect(() => {
     async function fetchData() {
+      setLoading(true);
       const [itemsRes, ordersRes] = await Promise.all([
         supabase.from("items").select("*").order("created_at", { ascending: false }),
         supabase.from("orders").select("*").order("created_at", { ascending: false }),
@@ -134,8 +163,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setItems(itemsRes.data.map(dbToItem));
       }
 
-      if (ordersRes.error || !ordersRes.data || ordersRes.data.length === 0) {
-        setOrders(initialOrders);
+      if (ordersRes.error || !ordersRes.data) {
+        setOrders([]);
       } else {
         setOrders(ordersRes.data.map(dbToOrder));
       }
@@ -156,6 +185,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (error) {
       console.error("toggleItemAvailable error:", error.message);
       alert("Gagal mengubah status: " + error.message);
+      return;
     }
 
     setItems((prev) =>
@@ -204,10 +234,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // ---- Orders ----
 
-  const addOrder = useCallback(async (order: Order) => {
-    const { error } = await supabase.from("orders").insert({
+  const addOrder = useCallback(async (order: Order): Promise<boolean> => {
+    const payload = {
       code: order.code,
-      user_id: (order as any).userId || null,
+      user_id: order.userId || null,
       items: order.items,
       total_price: order.totalPrice,
       total_deposit: order.totalDeposit,
@@ -220,25 +250,90 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       payment_method: order.paymentMethod,
       status: order.status,
       notes: order.notes || null,
-    });
-    if (!error) setOrders((prev) => [order, ...prev]);
+    };
+
+    const { data, error } = await supabase
+      .from("orders")
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("addOrder error:", error.message);
+      alert("Gagal menyimpan pesanan ke database: " + error.message);
+      return false;
+    }
+
+    if (data) {
+      setOrders((prev) => [dbToOrder(data), ...prev]);
+    } else {
+      setOrders((prev) => [order, ...prev]);
+    }
+    return true;
   }, []);
 
   const updateOrderStatus = useCallback(
-    async (id: string, status: Order["status"]) => {
-      const { error } = await supabase
-        .from("orders")
-        .update({ status })
-        .eq("id", id);
-      if (error) {
-        alert("Gagal mengubah status pesanan: " + error.message);
-        return;
+    async (id: string, status: Order["status"], code?: string): Promise<boolean> => {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+      let res;
+      if (isUuid) {
+        res = await supabase
+          .from("orders")
+          .update({ status })
+          .eq("id", id)
+          .select();
+      } else if (code) {
+        res = await supabase
+          .from("orders")
+          .update({ status })
+          .eq("code", code)
+          .select();
+      } else {
+        res = await supabase
+          .from("orders")
+          .update({ status })
+          .eq("id", id)
+          .select();
       }
+
+      // Jika update id menghasilkan 0 baris dan ada code unik, coba fallback update by code
+      if ((!res.data || res.data.length === 0) && code && isUuid) {
+        res = await supabase
+          .from("orders")
+          .update({ status })
+          .eq("code", code)
+          .select();
+      }
+
+      if (res.error) {
+        console.error("updateOrderStatus error:", res.error.message);
+        alert("Gagal mengubah status pesanan: " + res.error.message);
+        return false;
+      }
+
+      if (!res.data || res.data.length === 0) {
+        alert(
+          "Gagal mengubah status di Supabase: Tidak ada data yang terubah.\n\n" +
+          "Kemungkinan penyebab:\n" +
+          "1. Akun Anda belum memiliki role 'admin' di tabel profiles.\n" +
+          "2. Policy RLS Supabase untuk UPDATE belum terpasang. Jalankan script fix-orders.sql di Supabase SQL Editor."
+        );
+        return false;
+      }
+
+      const updatedRow = res.data[0];
+      const realId = updatedRow.id;
+
       setOrders((prev) =>
         prev.map((order) =>
-          order.id === id ? { ...order, status } : order
+          order.id === id || order.code === code
+            ? { ...order, id: realId, status }
+            : order
         )
       );
+
+      return true;
     },
     []
   );
@@ -260,11 +355,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         addItem,
         updateItem,
         deleteItem,
+        refreshItems,
         orders,
         addOrder,
         updateOrderStatus,
         getOrderByCode,
+        refreshOrders,
         loading,
+        ordersLoading,
       }}
     >
       {children}

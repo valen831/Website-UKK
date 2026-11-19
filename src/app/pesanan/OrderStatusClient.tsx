@@ -87,7 +87,7 @@ const EMPTY_ICONS: Record<string, string> = {
 };
 
 export function OrderStatusClient() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<SupabaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,26 +114,31 @@ export function OrderStatusClient() {
     setLoading(true);
     setError(null);
 
-    supabase
+    let query = supabase
       .from("orders")
       .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .then(({ data, error: err }) => {
-        if (cancelled) return;
-        if (err) {
-          setError(err.message);
-          setOrders([]);
-        } else {
-          setOrders((data as SupabaseOrder[]) ?? []);
-        }
-        setLoading(false);
-      });
+      .order("created_at", { ascending: false });
+
+    // Filter user_id jika user bukan admin (user biasa hanya melihat pesanannya sendiri)
+    if (profile?.role !== "admin") {
+      query = query.eq("user_id", user.id);
+    }
+
+    query.then(({ data, error: err }) => {
+      if (cancelled) return;
+      if (err) {
+        setError(err.message);
+        setOrders([]);
+      } else {
+        setOrders((data as SupabaseOrder[]) ?? []);
+      }
+      setLoading(false);
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [user, authLoading]);
+  }, [user, profile, authLoading]);
 
   // Guest code lookup handler
   const handleGuestLookup = useCallback(async () => {

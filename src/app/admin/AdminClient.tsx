@@ -37,11 +37,14 @@ export function AdminClient() {
     deleteItem,
     orders: ordersList,
     updateOrderStatus,
+    refreshOrders,
+    ordersLoading,
   } = useStore();
 
   const [tab, setTab] = useState<Tab>("items");
   const [editingItem, setEditingItem] = useState<RentalItem | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -85,6 +88,13 @@ export function AdminClient() {
         });
     }
   }, [tab]);
+
+  // Fetch orders when tab switches to orders
+  useEffect(() => {
+    if (tab === "orders") {
+      refreshOrders();
+    }
+  }, [tab, refreshOrders]);
 
   // ---- Access control ----
   if (authLoading) {
@@ -765,6 +775,33 @@ export function AdminClient() {
         {/* ===================== ORDERS TAB ===================== */}
         {tab === "orders" && (
           <div className="bg-white rounded-2xl border border-border overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-border bg-gray-50/50">
+              <p className="text-sm text-gray-500">
+                Total: <span className="font-semibold text-secondary">{ordersList.length}</span> pesanan
+              </p>
+              <button
+                type="button"
+                onClick={() => refreshOrders()}
+                disabled={ordersLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-border hover:bg-gray-50 text-secondary text-xs font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className={cn("w-3.5 h-3.5", ordersLoading && "animate-spin")}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                  />
+                </svg>
+                {ordersLoading ? "Memuat..." : "Muat Ulang"}
+              </button>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -814,24 +851,33 @@ export function AdminClient() {
                         {formatCurrency(order.grandTotal)}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <select
-                          value={order.status}
-                          onChange={(e) =>
-                            updateOrderStatus(order.id, e.target.value as OrderStatus)
-                          }
-                          className={cn(
-                            "px-2 py-1 rounded-md text-xs font-medium border-0 outline-none cursor-pointer",
-                            ORDER_STATUS_COLORS[order.status]
+                        <div className="inline-flex items-center gap-1.5">
+                          <select
+                            value={order.status}
+                            disabled={updatingOrderId === order.id}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value as OrderStatus;
+                              setUpdatingOrderId(order.id);
+                              await updateOrderStatus(order.id, newStatus, order.code);
+                              setUpdatingOrderId(null);
+                            }}
+                            className={cn(
+                              "px-2 py-1 rounded-md text-xs font-medium border-0 outline-none cursor-pointer disabled:opacity-50 transition-opacity",
+                              ORDER_STATUS_COLORS[order.status]
+                            )}
+                          >
+                            {Object.entries(ORDER_STATUS_LABELS).map(
+                              ([key, label]) => (
+                                <option key={key} value={key}>
+                                  {label}
+                                </option>
+                              )
+                            )}
+                          </select>
+                          {updatingOrderId === order.id && (
+                            <span className="inline-block h-3.5 w-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                           )}
-                        >
-                          {Object.entries(ORDER_STATUS_LABELS).map(
-                            ([key, label]) => (
-                              <option key={key} value={key}>
-                                {label}
-                              </option>
-                            )
-                          )}
-                        </select>
+                        </div>
                       </td>
                       <td className="px-4 py-3 hidden md:table-cell text-gray-500">
                         {formatDate(order.createdAt)}

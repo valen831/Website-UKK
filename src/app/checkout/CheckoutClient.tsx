@@ -33,16 +33,18 @@ export function CheckoutClient() {
   const [notes, setNotes] = useState("");
   const [orderCode, setOrderCode] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (items.length === 0 || !paymentMethod) return;
+    if (items.length === 0 || !paymentMethod || isSubmitting) return;
 
+    setIsSubmitting(true);
     const code = generateOrderCode();
 
     // Save order to Supabase via store
     const orderData = {
-      id: Date.now().toString(),
+      id: "", // Will be populated with UUID returned from Supabase
       code,
       items: [...items],
       totalPrice,
@@ -60,11 +62,15 @@ export function CheckoutClient() {
       notes: notes || undefined,
       userId: user?.id || null,
     };
-    addOrder(orderData as any);
 
-    setOrderCode(code);
-    setSubmitted(true);
-    clearCart();
+    const success = await addOrder(orderData);
+    setIsSubmitting(false);
+
+    if (success) {
+      setOrderCode(code);
+      setSubmitted(true);
+      clearCart();
+    }
   }
 
   // Empty cart
@@ -417,15 +423,22 @@ export function CheckoutClient() {
               <div className="space-y-3">
                 <button
                   type="submit"
-                  disabled={!paymentMethod}
+                  disabled={!paymentMethod || isSubmitting}
                   className={cn(
-                    "w-full py-3.5 font-semibold rounded-xl transition-colors text-sm",
-                    paymentMethod
+                    "w-full py-3.5 font-semibold rounded-xl transition-colors text-sm flex items-center justify-center gap-2",
+                    paymentMethod && !isSubmitting
                       ? "bg-primary text-white hover:bg-primary-dark"
                       : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   )}
                 >
-                  Buat Pesanan
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Memproses Pesanan...
+                    </>
+                  ) : (
+                    "Buat Pesanan"
+                  )}
                 </button>
 
                 <a

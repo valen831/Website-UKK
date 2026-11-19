@@ -59,26 +59,35 @@ create table items (
 );
 
 alter table items enable row level security;
+-- Helper function untuk cek role admin dengan aman (bypasses RLS recursion)
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'admin'
+  );
+$$;
+
+-- Items policies
 create policy "Items readable by all" on items for select using (true);
-create policy "Admin can insert items" on items for insert with check (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
-create policy "Admin can update items" on items for update using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
-create policy "Admin can delete items" on items for delete using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
+create policy "Admin can insert items" on items for insert with check (is_admin());
+create policy "Admin can update items" on items for update using (is_admin());
+create policy "Admin can delete items" on items for delete using (is_admin());
 
 -- Orders table (pesanan)
-create table orders (
+create table if not exists orders (
   id uuid default gen_random_uuid() primary key,
   code text unique not null,
-  user_id uuid references profiles(id),
+  user_id uuid references profiles(id) on delete set null,
   items jsonb not null default '[]',
-  total_price integer not null,
-  total_deposit integer not null,
-  grand_total integer not null,
+  total_price integer not null default 0,
+  total_deposit integer not null default 0,
+  grand_total integer not null default 0,
   customer_name text not null,
   customer_whatsapp text not null,
   customer_address text not null,
@@ -91,12 +100,19 @@ create table orders (
 );
 
 alter table orders enable row level security;
-create policy "Users can view own orders" on orders for select using (
-  auth.uid() = user_id or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+create policy "orders_select_policy" on orders for select using (
+  auth.uid() = user_id or is_admin() or true
 );
-create policy "Users can insert orders" on orders for insert with check (auth.uid() = user_id);
-create policy "Admin can update orders" on orders for update using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+create policy "orders_insert_policy" on orders for insert with check (
+  auth.uid() = user_id or user_id is null or is_admin()
 );
--- Lookup pesanan by code untuk guest
-create policy "Anyone can search by code" on orders for select using (true);
+create policy "orders_update_policy" on orders for update using (
+  auth.uid() is not null
+  or exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+) with check (
+  auth.uid() is not null
+  or exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+);
+create policy "orders_delete_policy" on orders for delete using (
+  auth.uid() is not null
+);
