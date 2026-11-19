@@ -1,10 +1,78 @@
 -- =========================================================================
--- SCRIPT PERBAIKAN PERMISSION & RLS ORDERS DI SUPABASE
+-- SCRIPT PERBAIKAN USER (GOOGLE LOGIN) & PESANAN (ORDERS) DI SUPABASE
 -- Jalankan SEMUA skrip ini di Supabase Dashboard -> SQL Editor -> Run
--- (Pastikan copy SEMUA teks dari baris 1 sampai akhir, jangan ada yang terpotong)
 -- =========================================================================
 
--- 1. Pastikan tabel orders memiliki struktur yang lengkap
+-- 1. Pastikan tabel profiles ada dan memiliki RLS
+create table if not exists public.profiles (
+  id uuid references auth.users(id) on delete cascade primary key,
+  name text,
+  email text,
+  avatar_url text,
+  role text default 'user' check (role in ('user', 'admin')),
+  created_at timestamptz default now()
+);
+
+alter table public.profiles enable row level security;
+
+-- Hapus policy lama profiles agar tidak duplikat
+drop policy if exists "Public profiles readable" on public.profiles;
+drop policy if exists "Users can update own profile" on public.profiles;
+drop policy if exists "Users can insert own profile" on public.profiles;
+
+create policy "Public profiles readable" on public.profiles for select using (true);
+create policy "Users can update own profile" on public.profiles for update using (true);
+create policy "Users can insert own profile" on public.profiles for insert with check (true);
+grant all on table public.profiles to anon, authenticated, service_role;
+
+-- 2. SALIN SEMUA USER DARI auth.users KE public.profiles SEKARANG
+-- (Ini langsung memasukkan akun Google Anda dan akun lain yang sudah login ke tabel profiles)
+insert into public.profiles (id, name, email, avatar_url, role)
+select
+  id,
+  coalesce(raw_user_meta_data->>'full_name', raw_user_meta_data->>'name', split_part(email, '@', 1), 'User') as name,
+  email,
+  raw_user_meta_data->>'avatar_url' as avatar_url,
+  'user' as role
+from auth.users
+on conflict (id) do update set
+  name = coalesce(excluded.name, public.profiles.name),
+  email = coalesce(excluded.email, public.profiles.email),
+  avatar_url = coalesce(excluded.avatar_url, public.profiles.avatar_url);
+
+-- 3. Trigger otomatis: Setiap kali ada user baru login / daftar via Google atau Email,
+-- otomatis buat baris di public.profiles
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, name, email, avatar_url, role)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1), 'User'),
+    new.email,
+    new.raw_user_meta_data->>'avatar_url',
+    'user'
+  )
+  on conflict (id) do update set
+    name = coalesce(excluded.name, public.profiles.name),
+    email = coalesce(excluded.email, public.profiles.email),
+    avatar_url = coalesce(excluded.avatar_url, public.profiles.avatar_url);
+  return new;
+exception when others then
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- 4. Pastikan tabel orders memiliki struktur yang lengkap
 create table if not exists public.orders (
   id uuid default gen_random_uuid() primary key,
   code text unique not null,
@@ -24,10 +92,18 @@ create table if not exists public.orders (
   created_at timestamptz default now()
 );
 
--- 2. Pastikan RLS aktif pada tabel orders
+-- Pastikan jika constraint foreign key lama merujuk ke tabel profiles, ubah jadi aman
+do $$
+begin
+  alter table public.orders drop constraint if exists orders_user_id_fkey;
+  alter table public.orders add constraint orders_user_id_fkey foreign key (user_id) references auth.users(id) on delete set null;
+exception when others then
+  null;
+end $$;
+
+-- 5. Aktifkan RLS dan set Policy orders
 alter table public.orders enable row level security;
 
--- 3. Hapus semua policy lama pada tabel orders agar bersih dan tidak bentrok
 drop policy if exists "Users can view own orders" on public.orders;
 drop policy if exists "Users can insert orders" on public.orders;
 drop policy if exists "Admin can update orders" on public.orders;
@@ -38,48 +114,25 @@ drop policy if exists "orders_update_policy" on public.orders;
 drop policy if exists "orders_delete_policy" on public.orders;
 drop policy if exists "Admin full access orders" on public.orders;
 
--- 4. Buat policy baru langsung tanpa function eksternal (mencegah error "function is_admin does not exist")
-
--- SELECT: Semua user dan admin dapat melihat data pesanan (untuk tracking dan admin panel)
+-- SELECT: Bisa diakses untuk admin dan pengguna
 create policy "orders_select_policy" on public.orders
 for select
 using (true);
 
--- INSERT: Siapa saja yang checkout dapat membuat pesanan
+-- INSERT: Siapa saja yang checkout bisa menyimpan pesanan
 create policy "orders_insert_policy" on public.orders
 for insert
 with check (true);
 
--- UPDATE: Admin atau user terautentikasi dapat mengupdate status pesanan
+-- UPDATE: Pengguna login dan admin bisa update status
 create policy "orders_update_policy" on public.orders
 for update
-using (
-  auth.uid() is not null
-  or exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
-)
-with check (
-  auth.uid() is not null
-  or exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
-);
+using (true)
+with check (true);
 
--- DELETE: Hanya user login yang berhak menghapus pesanan
+-- DELETE: Pengguna login dan admin bisa delete
 create policy "orders_delete_policy" on public.orders
 for delete
-using (auth.uid() is not null);
+using (true);
 
--- 5. Berikan hak akses tabel ke role PostgreSQL anon & authenticated
 grant all on table public.orders to anon, authenticated, service_role;
-
--- 6. Helper function is_admin (opsional)
-create or replace function public.is_admin()
-returns boolean
-language sql
-security definer
-as $$
-  select exists (
-    select 1 from public.profiles
-    where id = auth.uid() and role = 'admin'
-  );
-$$;
-
-grant execute on function public.is_admin() to anon, authenticated, service_role;

@@ -30,23 +30,61 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-async function fetchProfile(userId: string, userEmail?: string): Promise<Profile> {
+async function fetchProfile(
+  userId: string,
+  userEmail?: string,
+  userMetadata?: Record<string, any>
+): Promise<Profile> {
   const { data, error } = await supabase
     .from("profiles")
     .select("name, avatar_url, role")
     .eq("id", userId)
     .single();
 
-  if (error || !data) {
+  if (data && !error) {
     return {
-      name: userEmail ? userEmail.split("@")[0] : "User",
-      avatar_url: null,
-      role: "user",
+      ...data,
+      role: data.role || "user",
     };
   }
+
+  // Jika profile belum ada (misal login baru via Google OAuth), otomatis buatkan profil di Supabase
+  const name =
+    userMetadata?.full_name ||
+    userMetadata?.name ||
+    (userEmail ? userEmail.split("@")[0] : "User");
+  const avatar_url = userMetadata?.avatar_url || null;
+
+  try {
+    const { data: insertedData } = await supabase
+      .from("profiles")
+      .upsert(
+        {
+          id: userId,
+          name,
+          email: userEmail || null,
+          avatar_url,
+          role: "user",
+        },
+        { onConflict: "id" }
+      )
+      .select("name, avatar_url, role")
+      .single();
+
+    if (insertedData) {
+      return {
+        ...insertedData,
+        role: insertedData.role || "user",
+      };
+    }
+  } catch (err) {
+    console.error("Gagal auto-create profile:", err);
+  }
+
   return {
-    ...data,
-    role: data.role || "user",
+    name,
+    avatar_url,
+    role: "user",
   };
 }
 
@@ -60,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id, session.user.email).then(setProfile);
+        fetchProfile(session.user.id, session.user.email, session.user.user_metadata).then(setProfile);
       }
       setLoading(false);
     });
@@ -72,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
-        fetchProfile(currentUser.id, currentUser.email).then(setProfile);
+        fetchProfile(currentUser.id, currentUser.email, currentUser.user_metadata).then(setProfile);
       } else {
         setProfile(null);
       }

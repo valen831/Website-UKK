@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
 import { useStore } from "@/lib/store-context";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/lib/supabase";
 import {
   PaymentMethod,
   PAYMENT_CATEGORIES,
@@ -41,6 +42,23 @@ export function CheckoutClient() {
 
     setIsSubmitting(true);
     const code = generateOrderCode();
+
+    // Pastikan profile user ada di tabel profiles agar foreign key constraint tidak gagal
+    if (user) {
+      try {
+        await supabase.from("profiles").upsert(
+          {
+            id: user.id,
+            name: name || user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
+            email: user.email || null,
+            avatar_url: user.user_metadata?.avatar_url || null,
+          },
+          { onConflict: "id" }
+        );
+      } catch (err) {
+        console.error("Profile check before order:", err);
+      }
+    }
 
     // Save order to Supabase via store
     const orderData = {

@@ -166,13 +166,12 @@ export function OrderStatusClient() {
   const filteredOrders = useMemo(() => {
     let result = [...orders];
 
-    if (activeTab !== "all") {
-      result = result.filter((o) => o.status === activeTab);
-    }
-
+    // Jika user mengetik pencarian kode pesanan, cari di seluruh pesanan tanpa terikat tab status
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((o) => o.code.toLowerCase().includes(q));
+    } else if (activeTab !== "all") {
+      result = result.filter((o) => o.status === activeTab);
     }
 
     return result;
