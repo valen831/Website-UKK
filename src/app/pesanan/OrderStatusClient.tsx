@@ -202,31 +202,33 @@ export function OrderStatusClient() {
     setGuestLoading(false);
   }, [guestCode]);
 
-  // Filter + search (for logged-in user)
-  const filteredOrders = useMemo(() => {
-    // Jika user mengetik pencarian kode pesanan
+  // Daftar pesanan yang aktif (dari pesanan lokal atau hasil pencarian kode)
+  const currentOrdersList = useMemo(() => {
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       const localMatches = orders.filter((o) => o.code.toLowerCase().includes(q));
       if (localMatches.length > 0) return localMatches;
       return remoteOrders;
     }
-
-    if (activeTab !== "all") {
-      return orders.filter((o) => o.status === activeTab);
-    }
-
     return orders;
-  }, [orders, activeTab, searchQuery, remoteOrders]);
+  }, [orders, searchQuery, remoteOrders]);
 
-  // Tab counts
+  // Filter berdasarkan tab status aktif (tab "all" menampilkan semua, tab status hanya menampilkan status yang sesuai)
+  const filteredOrders = useMemo(() => {
+    if (activeTab === "all") {
+      return currentOrdersList;
+    }
+    return currentOrdersList.filter((o) => o.status === activeTab);
+  }, [currentOrdersList, activeTab]);
+
+  // Tab counts (menghitung jumlah pesanan per tab secara akurat)
   const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: orders.length };
-    for (const o of orders) {
+    const counts: Record<string, number> = { all: currentOrdersList.length };
+    for (const o of currentOrdersList) {
       counts[o.status] = (counts[o.status] || 0) + 1;
     }
     return counts;
-  }, [orders]);
+  }, [currentOrdersList]);
 
   // Auth still loading
   if (authLoading) {
