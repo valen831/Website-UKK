@@ -192,7 +192,24 @@ export function ItemDetailClient({ item: initialItem }: Props) {
           {item.available && (
             <>
               <div className="mb-6">
-                <h3 className="font-semibold text-secondary mb-3">Pilih Tanggal Sewa</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-secondary">Pilih Tanggal Sewa</h3>
+                  {item.bookedDates && item.bookedDates.length > 0 && (
+                    <span className="text-xs text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 font-medium">
+                      ⚠️ Ada tanggal terisi
+                    </span>
+                  )}
+                </div>
+
+                {item.bookedDates && item.bookedDates.length > 0 && (
+                  <div className="mb-3 p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2">
+                    <span className="text-base leading-none">📅</span>
+                    <div>
+                      <span className="font-semibold">Info Ketersediaan:</span> Tanggal berwarna merah bertanda coret sudah disewa oleh penyewa lain. Silakan pilih rentang tanggal lain yang masih kosong.
+                    </div>
+                  </div>
+                )}
+
                 <DateRangePicker
                   bookedDates={item.bookedDates}
                   startDate={startDate}

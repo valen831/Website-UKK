@@ -6,12 +6,63 @@ import {
   useState,
   useCallback,
   useEffect,
+  useMemo,
   ReactNode,
 } from "react";
 import { RentalItem, Order } from "@/lib/types";
 import { rentalItems } from "@/data/items";
 import { orders as initialOrders } from "@/data/orders";
 import { supabase } from "@/lib/supabase";
+import { getDatesBetween } from "@/lib/utils";
+
+// Helper untuk menghitung tanggal-tanggal yang sudah penuh dipesan (berdasarkan pesanan aktif & stok barang)
+export function computeItemBookedDates(
+  item: RentalItem,
+  orders: Order[]
+): string[] {
+  const dateCounts: Record<string, number> = {};
+
+  // Masukkan juga tanggal booked yang tersimpan manual di tabel items
+  if (item.bookedDates && Array.isArray(item.bookedDates)) {
+    for (const d of item.bookedDates) {
+      if (typeof d === "string") {
+        dateCounts[d] = (dateCounts[d] || 0) + 1;
+      }
+    }
+  }
+
+  // Hitung pemesanan dari seluruh pesanan yang TIDAK dibatalkan
+  for (const order of orders) {
+    if (order.status === "cancelled") continue;
+    if (!order.items || !Array.isArray(order.items)) continue;
+
+    for (const ci of order.items) {
+      const isMatch =
+        ci.item &&
+        (ci.item.id === item.id ||
+          ci.item.slug === item.slug ||
+          (item.id && ci.item.id === item.id));
+
+      if (isMatch && ci.startDate && ci.endDate) {
+        const dates = getDatesBetween(ci.startDate, ci.endDate);
+        for (const d of dates) {
+          dateCounts[d] = (dateCounts[d] || 0) + 1;
+        }
+      }
+    }
+  }
+
+  // Tanggal dinyatakan penuh jika jumlah sewa pada tanggal tersebut >= stok barang
+  const maxStock = Math.max(Number(item.stock) || 1, 1);
+  const fullyBookedDates: string[] = [];
+  for (const [date, count] of Object.entries(dateCounts)) {
+    if (count >= maxStock) {
+      fullyBookedDates.push(date);
+    }
+  }
+
+  return Array.from(new Set(fullyBookedDates));
+}
 
 interface StoreContextType {
   // Items
@@ -269,8 +320,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } else {
       setOrders((prev) => [order, ...prev]);
     }
+
+    // Sync tanggal terisi (booked_dates) ke tabel items di Supabase
+    try {
+      const allActiveOrders = [data ? dbToOrder(data) : order, ...orders];
+      for (const ci of order.items) {
+        if (ci.item && ci.startDate && ci.endDate) {
+          const targetItem = items.find(
+            (i) => i.id === ci.item.id || i.slug === ci.item.slug
+          );
+          if (targetItem) {
+            const newDates = computeItemBookedDates(targetItem, allActiveOrders);
+            await supabase
+              .from("items")
+              .update({ booked_dates: newDates })
+              .eq("id", targetItem.id);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Sync booked_dates to items error:", err);
+    }
+
     return true;
-  }, []);
+  }, [items, orders]);
 
   const updateOrderStatus = useCallback(
     async (id: string, status: Order["status"], code?: string): Promise<boolean> => {
@@ -333,9 +406,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         )
       );
 
+      // Sync perubahan booked_dates ke tabel items jika status pesanan dibatalkan atau berubah
+      try {
+        const nextOrders = orders.map((o) =>
+          o.id === id || o.code === code ? { ...o, status } : o
+        );
+        for (const it of items) {
+          const newDates = computeItemBookedDates(it, nextOrders);
+          await supabase
+            .from("items")
+            .update({ booked_dates: newDates })
+            .eq("id", it.id);
+        }
+      } catch (err) {
+        console.error("Sync booked_dates on status update error:", err);
+      }
+
       return true;
     },
-    []
+    [items, orders]
   );
 
   const getOrderByCode = useCallback(
@@ -346,11 +435,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     [orders]
   );
+
+  // Hitung ketersediaan tanggal untuk setiap barang secara real-time
+  const itemsWithBookedDates = useMemo(() => {
+    return items.map((item) => ({
+      ...item,
+      bookedDates: computeItemBookedDates(item, orders),
+    }));
+  }, [items, orders]);
  
   return (
     <StoreContext.Provider
       value={{
-        items,
+        items: itemsWithBookedDates,
         toggleItemAvailable,
         addItem,
         updateItem,

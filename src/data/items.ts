@@ -11,7 +11,7 @@ export const rentalItems: RentalItem[] = [
     pricePerDay: 350000,
     deposit: 1000000,
     images: ['https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800', 'https://images.unsplash.com/photo-1502982720700-bfff97f2ecac?w=800'],
-    stock: 3,
+    stock: 9,
     rating: 4.9,
     reviewCount: 28,
     featured: true,
